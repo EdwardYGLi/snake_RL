@@ -1,5 +1,6 @@
 """
 Created by Edward Li at 10/6/20
+followed game code from https://github.com/maurock/snake-ga
 """
 
 import argparse
