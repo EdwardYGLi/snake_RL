@@ -95,6 +95,7 @@ class Player:
         self.y = self.y - self.y % self.game.block_size
         self.position = deque()
         self.position.append([self.x, self.y])
+
         self.delta_x = self.game.block_size
         self.delta_y = 0
         self.food = 1
@@ -103,8 +104,8 @@ class Player:
     def update_position(self, x, y):
         if x != self.position[-1][0] or y != self.position[-1][1]:
             if self.food > 1:
-                for i in range(0, self.food - 1):
-                    self.position[i][0], self.position[i][1] = self.position[i + 1]
+                self.position.append(self.position.popleft())
+
             self.position[-1][0] = x
             self.position[-1][1] = y
 
@@ -234,7 +235,6 @@ def run_game(speed):
                     main = False
                 if event.key == ord('r'):
                     game.reset()
-                    
 
         record = get_record(game.score, record)
         player.move(move, player.x, player.y, game, food)
