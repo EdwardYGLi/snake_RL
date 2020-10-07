@@ -6,8 +6,10 @@ import argparse
 import random
 import sys
 from collections import deque
+
 import numpy as np
 import pygame
+
 
 def update_screen():
     pygame.display.update()
@@ -27,11 +29,11 @@ def display_ui(game, score, record):
     text_score_number = myfont.render(str(score), True, (0, 0, 0))
     text_highest = myfont.render('HIGHEST SCORE: ', True, (0, 0, 0))
     text_highest_number = myfont_bold.render(str(record), True, (0, 0, 0))
-    game.gameDisplay.blit(text_score, (45, game.height+20))
-    game.gameDisplay.blit(text_score_number, (120, game.height+20))
-    game.gameDisplay.blit(text_highest, (190, game.height+20))
-    game.gameDisplay.blit(text_highest_number, (350, game.height+20))
-    game.gameDisplay.blit(game.bg, (10, 10))
+    game.gameDisplay.blit(text_score, (45, game.height + 20))
+    game.gameDisplay.blit(text_score_number, (120, game.height + 20))
+    game.gameDisplay.blit(text_highest, (190, game.height + 20))
+    game.gameDisplay.blit(text_highest_number, (350, game.height + 20))
+    game.gameDisplay.blit(game.bg, (0,0))
 
 
 def get_record(score, record):
@@ -48,28 +50,51 @@ class Snake:
         self.height = height
         self.bg = pygame.image.load("assets/background.png")
         self.bg = pygame.transform.scale(self.bg, (width, height))
-        self.gameDisplay = pygame.display.set_mode((width+20, height + 40))
+        self.gameDisplay = pygame.display.set_mode((width, height + 40))
         self.score = 0
         self.crash = False
         self.margin = margin
         self.block_size = block_size
         self.player = Player(self)
         self.food = Food(self)
+        
+    def reset(self):
+        self.player.reset()
+        self.food.reset()
+        self.score = 0
+        self.crash = False
 
 
 class Player:
     def __init__(self, game):
-        # start in the center of the screen
-        self.x = game.width//2
-        self.y = game.height//2
-        # mod by grid size so its grid aligned.
-        self.x = self.x - self.x % game.block_size
-        self.y = self.y - self.y % game.block_size
-        self.position = deque()
-        self.position.append([self.x, self.y])
+        self.game = game
         self.image = pygame.image.load("assets/green_square.jpg")
         self.image = pygame.transform.scale(self.image, (game.block_size, game.block_size))
-        self.delta_x = game.block_size
+        self.head_image = pygame.image.load("assets/snake_head.png")
+        self.head_image = pygame.transform.scale(self.head_image, (game.block_size, game.block_size))
+        # start in the center of the screen
+        self.x = self.game.width // 2
+        self.y = self.game.height // 2
+        # mod by grid size so its grid aligned.
+        self.x = self.x - self.x % self.game.block_size
+        self.y = self.y - self.y % self.game.block_size
+        self.position = deque()
+        self.position.append([self.x, self.y])
+        self.delta_x = self.game.block_size
+        self.delta_y = 0
+        self.food = 1
+        self.eaten = False
+        
+    def reset(self):
+        # start in the center of the screen
+        self.x = self.game.width // 2
+        self.y = self.game.height // 2
+        # mod by grid size so its grid aligned.
+        self.x = self.x - self.x % self.game.block_size
+        self.y = self.y - self.y % self.game.block_size
+        self.position = deque()
+        self.position.append([self.x, self.y])
+        self.delta_x = self.game.block_size
         self.delta_y = 0
         self.food = 1
         self.eaten = False
@@ -116,9 +141,9 @@ class Player:
         self.x = x + self.delta_x
         self.y = y + self.delta_y
 
-        if self.x < game.margin or self.x > game.width - game.margin \
+        if self.x < game.margin or self.x > game.width - 2*game.margin \
                 or self.y < game.margin \
-                or self.y > game.height - game.margin \
+                or self.y > game.height - 2*game.margin \
                 or [self.x, self.y] in self.position:
             game.crash = True
 
@@ -133,7 +158,10 @@ class Player:
         if not game.crash:
             for i in range(self.food):
                 x_temp, y_temp = self.position[len(self.position) - 1 - i]
-                game.gameDisplay.blit(self.image, (x_temp, y_temp))
+                if i == 0:
+                    game.gameDisplay.blit(self.head_image,(x_temp,y_temp))
+                else:
+                    game.gameDisplay.blit(self.image, (x_temp, y_temp))
 
             update_screen()
         else:
@@ -142,15 +170,21 @@ class Player:
 
 class Food:
     def __init__(self, game):
+        self.game = game
         self.image = pygame.image.load("assets/apple.jpg")
         self.image = pygame.transform.scale(self.image, (game.margin, game.margin))
-
         # mod by grid size so its grid aligned.
         self.x_food = random.randint(game.margin, game.width - game.margin)
         self.x_food = self.x_food - self.x_food % game.block_size
         self.y_food = random.randint(game.margin, game.height - game.margin)
         self.y_food = self.y_food - self.y_food % game.block_size
 
+    def reset(self):
+        # mod by grid size so its grid aligned.
+        self.x_food = random.randint(self.game.margin, self.game.width - self.game.margin)
+        self.x_food = self.x_food - self.x_food % self.game.block_size
+        self.y_food = random.randint(self.game.margin, self.game.height - self.game.margin)
+        self.y_food = self.y_food - self.y_food % self.game.block_size
 
     def next_food(self, game, player):
         self.x_food = random.randint(game.margin, game.width - game.margin)
@@ -189,16 +223,17 @@ def run_game(speed):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT or event.key == ord('a'):
                     move = [0, 0, 1]
-                    print('left')
                 if event.key == pygame.K_RIGHT or event.key == ord('d'):
                     move = [0, 1, 0]
-                    print('right')
 
             if event.type == pygame.KEYUP:
                 if event.key == ord('q'):
                     pygame.quit()
                     sys.exit()
                     main = False
+                if event.key == ord('r'):
+                    game.reset()
+                    
 
         record = get_record(game.score, record)
         player.move(move, player.x, player.y, game, food)
@@ -212,4 +247,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--speed", type=int, default=10)
     args = parser.parse_args()
-    run_game(100-args.speed)
+    run_game(100 - args.speed)
