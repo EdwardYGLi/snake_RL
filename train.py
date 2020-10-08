@@ -2,20 +2,41 @@
 Created by Edward Li at 10/7/20
 """
 import argparse
+import datetime
 import math
 import random
 import pygame
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import cv2
+import os
 import torch
 import torch.functional as F
+import torch.optim as optim
 import wandb
+from itertools import count
 from tqdm import tqdm
 from snake import Snake,Player,Food,display,get_record, __num_actions__
 from DQN import DQN
 from replay_memory import Transition, ReplayMemory
 
+
+def get_run_name():
+    """
+     Function to return wandb run name.
+     Currently this is the only way to get the run name.
+     In a future bugfix wandb.run.name will then be available.
+    :return: run name or dryrun when dryrun.
+    """
+    try:
+        wandb.run.save()
+        run_name = wandb.run.name
+        return run_name
+    except BaseException:
+        # when WANDB_MODE=dryrun the above will throw an exception. At that
+        # stage we except and return "dryrun"
+        return "dryrun"
 
 
 # set up matplotlib
@@ -32,7 +53,7 @@ def init_wandb(args, tag):
     wandb.config.update(args)
 
 
-def select_action(state, policy_net, n_actions, eps_end, eps_start, eps_decay):
+def select_action(state, policy_net, n_actions, eps_start,eps_end, eps_decay):
     global global_steps 
     sample = random.random()
     eps_threshold = eps_end + (eps_start - eps_end) * \
@@ -54,7 +75,6 @@ def select_action(state, policy_net, n_actions, eps_end, eps_start, eps_decay):
 
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-global_steps = 0
 
 
 def optimize_model(args, memory, policy_net, target_net,optimizer):
@@ -102,7 +122,28 @@ def optimize_model(args, memory, policy_net, target_net,optimizer):
     optimizer.step()
 
 
+def get_env_state(image, game):
+    image = cv2.resize(image[:-40, :, ::-1],(game.width // game.block_size, game.height // game.block_size), cv2.INTER_AREA)
+    image_tensor = torch.tensor(image).unsqueeze(0).to(device)
+    return image, image_tensor
+
+
+def get_reward(player, crash, rewards):
+    reward = 0
+    if crash:
+        reward = rewards[1]
+        return reward
+    if player.eaten:
+        reward = reward[0]
+    return reward
+
+
 def main(args):
+    now = datetime.datetime.now()
+    run_name = get_run_name()
+    logger = SummaryWriter(log_dir="../.runs/{}_{}".format(now.strftime("%Y-%m-%d_%H_%M"), run_name))
+    output_dir = os.path.join(args.output_dir, "{}_{}".format(now.strftime("%Y-%m-%d_%H_%M"), run_name))
+    os.makedirs(output_dir, exist_ok=True)
     pygame.font.init()
     pygame.init()
     policy_net = DQN(args.screen_size//args.block_size,__num_actions__,args.conv_features)
@@ -111,15 +152,61 @@ def main(args):
         policy_net.load_state_dict(torch.load(args.pretrained))
     target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
-    for epi in tqdm(args.episodes):
 
-    game = Snake(args.screen_size,args.screen_size, block_size=20,margin=20)
-    player = game.player
-    food = game.food
+    # use RMSprop here because there is uncertainty what momentum does in RL environment.
+    optimizer = optim.RMSprop(policy_net.parameters())
+    memory = ReplayMemory(10000)
+    global_steps = 0
+    score_plot = []
+    durations = []
+    record = 0
+    for epi in tqdm(range(args.episodes)):
+        game = Snake(args.screen_size,args.screen_size, block_size=20,margin=20)
+        player = game.player
+        food = game.food
+        # init move
+        player.move([1, 0, 0], player.x, player.y, game, food)
+        last_image, last_state = get_env_state(display(player, food, game, record))
+        curr_state = last_state
+        state = last_state - curr_state
+        for t in count():
+            # select action based on state
+            action = select_action(last_state,policy_net,__num_actions__,*args.eps)
 
+            player.move(action.detach().numpy(),player.x,player.y,game,food)
+            reward = torch.tensor([get_reward(player,game.crash,args.reward)],device=device)
+            record = get_record(game.score, record)
 
+            # observer our new state
+            last_state = curr_state
+            curr_image, curr_state = get_env_state(display(player,food,game,record))
+            if not game.crash:
+                next_state = curr_state - last_state
+            else:
+                next_state = None
 
+            # store the transition in memory
+            memory.push(state,action,next_state,reward)
 
+            # move to next state
+            state = next_state
+
+            # perform one optimization step (on the target network)
+            optimize_model(args,memory,policy_net,target_net,optimizer)
+
+            if game.crash:
+                score_plot.append(record)
+                durations.append(t+1)
+                
+        # Update the target network, copying all weights and biases in DQN
+        if epi % args.target_update == 0:
+            target_net.load_state_dict(policy_net.state_dict())
+        if epi % args.save_interval == 0:
+            torch.save(policy_net.state_dict())
+
+    print("Complete")
+    plt.ioff()
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -134,10 +221,11 @@ if __name__ == "__main__":
     parser.add_argument("--episodes", help="number of training episodes", default=1000)
     parser.add_argument("--screen_size", help="screen size", default=600)
     parser.add_argument("--block_size",help="game block_size", default=20)
-    parser.add_argument("--game_speed",help="game_speed (sleep duration)",type=int,default=30)
-    parser.add_argument("--eval_interval", help="interval between eval episodes", default=10, type=int)
+    # parser.add_argument("--game_speed",help="game_speed (sleep duration)",type=int,default=30)
+    parser.add_argument("--save_interval", help="interval between saving weights", default=10, type=int)
     parser.add_argument("--pretrained",help="pre trained checkpoint",default=None)
     parser.add_argument("--reward",help="reward for eating,dying",default="10,-1")
+    parser.add_argument("--output_dir",help="output directory",default = "./output")
     args = parser.parse_args()
     args.eps = [float(x) for x in args.eps.split(",")]
     args.conv_features = [int(x) for x in args.conv_features.split(",")]

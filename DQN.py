@@ -25,7 +25,7 @@ class DQN(nn.Module):
         # calculate shape
         side_length = calc_out_shape(side_length, 5, 1, 2)  # after first conv
         side_length = calc_out_shape(side_length, 2, 2, 0)  # after first maxpool
-        side_length = calc_out_shape(side_length, 1, 1)  # after second conv
+        side_length = calc_out_shape(side_length, 1, 1, 0)  # after second conv
         side_length = calc_out_shape(side_length, 2, 2, 0)  # after second maxpool
         side_length = calc_out_shape(side_length, 3, 1, 1)  # after third conv
 

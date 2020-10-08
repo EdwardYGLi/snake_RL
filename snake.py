@@ -14,6 +14,7 @@ import pygame
 
 __num_actions__ = 3
 
+
 def update_screen():
     pygame.display.update()
 
@@ -24,8 +25,7 @@ def display(player, food, game, record):
     player.display_player(game)
     food.display_food(game)
     image = pygame.surfarray.array3d(pygame.display.get_surface()).swapaxes(0, 1)
-    #     image = cv2.resize([:-40, :, ::-1],
-    #                        (game.width // game.block_size, game.height // game.block_size), cv2.INTER_AREA)
+
     return image
 
 
@@ -246,7 +246,7 @@ def run_game(speed):
 
         record = get_record(game.score, record)
         player.move(move, player.x, player.y, game, food)
-        display(player, food, game, record)
+        img = display(player, food, game, record)
         pygame.time.wait(speed)
 
 
