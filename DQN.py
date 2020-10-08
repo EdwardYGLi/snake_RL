@@ -3,7 +3,7 @@ Created by Edward Li at 10/7/20
 Using a CNN structure from this paper (https://www.diva-portal.org/smash/get/diva2:1342302/FULLTEXT01.pdf)
 and Google Deep mind
 """
-import torch.functional as F
+import torch.nn.functional as F
 import torch.nn as nn
 
 
@@ -14,7 +14,7 @@ class DQN(nn.Module):
         self.bn1 = nn.BatchNorm2d(num_features=features[0])
         self.mp1 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.conv2 = nn.Conv2d(in_channels=features[0], out_channels=features[1], kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm2d(num_features=features[0])
+        self.bn2 = nn.BatchNorm2d(num_features=features[1])
         self.mp2 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.conv3 = nn.Conv2d(in_channels=features[1], out_channels=features[2], kernel_size=3, stride=1, padding=1)
         self.bn3 = nn.BatchNorm2d(num_features=features[2])
@@ -36,4 +36,4 @@ class DQN(nn.Module):
         x = self.mp1(F.relu(self.bn1(self.conv1(x))))
         x = self.mp2(F.relu(self.bn2(self.conv2(x))))
         x = F.relu(self.bn3(self.conv3(x)))
-        return self.linear(x.view(x.size(0), -1))
+        return self.linear(x.contiguous().view(x.size(0), -1))

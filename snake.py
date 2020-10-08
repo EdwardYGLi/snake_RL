@@ -8,7 +8,6 @@ import random
 import sys
 from collections import deque
 
-import cv2
 import numpy as np
 import pygame
 
@@ -25,7 +24,6 @@ def display(player, food, game, record):
     player.display_player(game)
     food.display_food(game)
     image = pygame.surfarray.array3d(pygame.display.get_surface()).swapaxes(0, 1)
-
     return image
 
 
@@ -65,6 +63,11 @@ class Snake:
         self.block_size = block_size
         self.player = Player(self)
         self.food = Food(self)
+        self.actions = {
+            0: np.array([1, 0, 0]),
+            1: np.array([0, 1, 0]),
+            2: np.array([0, 0, 1])
+        }
 
     def reset(self):
         self.player.reset()
