@@ -248,7 +248,7 @@ if __name__ == "__main__":
     parser.add_argument("--speed", help="game_speed", type=int, default=10)
     parser.add_argument("--batch_size", help="batch_size", type=int, default=128)
     parser.add_argument("--gamma", help="gamma, for balancing near/long term reward", type=float, default=0.999)
-    parser.add_argument("--memory_size",help="size of memory",type=int, default= 10000)
+    parser.add_argument("--memory_size",help="size of memory",type=int, default=10000)
     parser.add_argument("--eps", help="epsilon, in 'start, end, decay' format", default="0.9,0.05,200")
     parser.add_argument("--target_update", help="duration before update", default=10,type=int)
     parser.add_argument("--conv_features", help="convolution feature size, in 'f1,f2,f3' format", default="32,64,128")
