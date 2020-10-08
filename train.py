@@ -132,12 +132,12 @@ def get_env_state(image, game):
 
 
 def get_reward(player, crash, rewards):
-    reward = 0
+    reward = -1
     if crash:
         reward = rewards[1]
         return reward
     if player.eaten:
-        reward = reward[0]
+        reward = rewards[0]
     return reward
 
 
@@ -242,12 +242,12 @@ if __name__ == "__main__":
     parser.add_argument("--target_update", help="duration before update", default=10)
     parser.add_argument("--conv_features", help="convolution feature size, in 'f1,f2,f3' format", default="32,64,128")
     parser.add_argument("--episodes", help="number of training episodes", default=1000)
-    parser.add_argument("--screen_size", help="screen size", default=600)
+    parser.add_argument("--screen_size", help="screen size", default=400)
     parser.add_argument("--block_size", help="game block_size", default=20)
     # parser.add_argument("--game_speed",help="game_speed (sleep duration)",type=int,default=30)
     parser.add_argument("--save_interval", help="interval between saving weights", default=100, type=int)
     parser.add_argument("--pretrained", help="pre trained checkpoint", default=None)
-    parser.add_argument("--reward", help="reward for eating,dying", default="10,-1")
+    parser.add_argument("--reward", help="reward for eating,dying", default="100,-100")
     parser.add_argument("--output_dir", help="output directory", default="./output")
     args = parser.parse_args()
     args.eps = [float(x) for x in args.eps.split(",")]
