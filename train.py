@@ -246,7 +246,7 @@ if __name__ == "__main__":
     parser.add_argument("--block_size", help="game block_size", default=20)
     parser.add_argument("--save_interval", help="interval between saving weights", default=100, type=int)
     parser.add_argument("--pretrained", help="pre trained checkpoint", default=None)
-    parser.add_argument("--reward", help="reward for eating,dying", default="100,-100")
+    parser.add_argument("--reward", help="reward for eating,dying", default="100,-10")
     parser.add_argument("--output_dir", help="output directory", default="./output")
     args = parser.parse_args()
     args.eps = [float(x) for x in args.eps.split(",")]

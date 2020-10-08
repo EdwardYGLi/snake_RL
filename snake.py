@@ -90,10 +90,11 @@ class Player:
         self.x = self.x - self.x % self.game.block_size
         self.y = self.y - self.y % self.game.block_size
         self.position = deque()
-        self.position.append([self.x, self.y])
+        self.position.extend(
+            [[self.x - 2 * game.block_size, self.y], [self.x - game.block_size, self.y], [self.x, self.y]])
         self.delta_x = self.game.block_size
         self.delta_y = 0
-        self.food = 1
+        self.food = 3
         self.eaten = False
 
     def reset(self):
@@ -192,16 +193,16 @@ class Food:
 
     def reset(self):
         # mod by grid size so its grid aligned.
-        self.x_food = random.randint(self.game.margin, self.game.width - self.game.margin)
+        self.x_food = random.randint(self.game.margin, self.game.width - 2 * self.game.margin)
         self.x_food = self.x_food - self.x_food % self.game.block_size
-        self.y_food = random.randint(self.game.margin, self.game.height - self.game.margin)
+        self.y_food = random.randint(self.game.margin, self.game.height - 2 * self.game.margin)
         self.y_food = self.y_food - self.y_food % self.game.block_size
 
     def next_food(self, game, player):
-        self.x_food = random.randint(game.margin, game.width - game.margin)
+        self.x_food = random.randint(game.margin, game.width - 2 * game.margin)
         self.x_food = self.x_food - self.x_food % game.block_size
 
-        self.y_food = random.randint(game.margin, game.height - game.margin)
+        self.y_food = random.randint(game.margin, game.height - 2 * game.margin)
         self.y_food = self.y_food - self.y_food % game.block_size
         if (self.x_food, self.y_food) not in player.position:
             return self.x_food, self.y_food
