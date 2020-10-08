@@ -12,13 +12,14 @@ import cv2
 import numpy as np
 import pygame
 
+__num_actions__ = 3
 
 def update_screen():
     pygame.display.update()
 
 
 def display(player, food, game, record):
-    game.gameDisplay.fill((255, 255, 255))
+    game.game_display.fill((255, 255, 255))
     display_ui(game, game.score, record)
     player.display_player(game)
     food.display_food(game)
@@ -35,11 +36,11 @@ def display_ui(game, score, record):
     text_score_number = myfont.render(str(score), True, (0, 0, 0))
     text_highest = myfont.render('HIGHEST SCORE: ', True, (0, 0, 0))
     text_highest_number = myfont_bold.render(str(record), True, (0, 0, 0))
-    game.gameDisplay.blit(text_score, (45, game.height + 20))
-    game.gameDisplay.blit(text_score_number, (120, game.height + 20))
-    game.gameDisplay.blit(text_highest, (190, game.height + 20))
-    game.gameDisplay.blit(text_highest_number, (350, game.height + 20))
-    game.gameDisplay.blit(game.bg, (0, 0))
+    game.game_display.blit(text_score, (45, game.height + 20))
+    game.game_display.blit(text_score_number, (120, game.height + 20))
+    game.game_display.blit(text_highest, (190, game.height + 20))
+    game.game_display.blit(text_highest_number, (350, game.height + 20))
+    game.game_display.blit(game.bg, (0, 0))
 
 
 def get_record(score, record):
@@ -56,7 +57,8 @@ class Snake:
         self.height = height
         self.bg = pygame.image.load("assets/background.png")
         self.bg = pygame.transform.scale(self.bg, (width, height))
-        self.gameDisplay = pygame.display.set_mode((width, height + 40))
+        self.game_display = pygame.display.set_mode((width, height + 40))
+        self.game_buffer = None
         self.score = 0
         self.crash = False
         self.margin = margin
@@ -166,9 +168,9 @@ class Player:
             for i in range(self.food):
                 x_temp, y_temp = self.position[len(self.position) - 1 - i]
                 if i == 0:
-                    game.gameDisplay.blit(self.head_image, (x_temp, y_temp))
+                    game.game_display.blit(self.head_image, (x_temp, y_temp))
                 else:
-                    game.gameDisplay.blit(self.image, (x_temp, y_temp))
+                    game.game_display.blit(self.image, (x_temp, y_temp))
             update_screen()
         else:
             pygame.time.wait(300)
@@ -204,11 +206,13 @@ class Food:
             self.next_food(game, player)
 
     def display_food(self, game):
-        game.gameDisplay.blit(self.image, (self.x_food, self.y_food))
+        game.game_display.blit(self.image, (self.x_food, self.y_food))
         update_screen()
 
 
 def run_game(speed):
+    # Set options to activate or deactivate the game view, and its speed
+    pygame.font.init()
     pygame.init()
     main = True
     game = Snake(500, 500, 20)
@@ -222,7 +226,7 @@ def run_game(speed):
         move = [1, 0, 0]
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit();
+                pygame.quit()
                 sys.exit()
                 main = False
 
@@ -247,9 +251,7 @@ def run_game(speed):
 
 
 if __name__ == '__main__':
-    # Set options to activate or deactivate the game view, and its speed
-    pygame.font.init()
     parser = argparse.ArgumentParser()
-    parser.add_argument("--speed", type=int, default=10)
+    parser.add_argument("--speed", type=int, default=100)
     args = parser.parse_args()
     run_game(100 - args.speed)

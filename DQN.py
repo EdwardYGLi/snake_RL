@@ -8,16 +8,16 @@ import torch.nn as nn
 
 
 class DQN(nn.Module):
-    def __init__(self, side_length, outputs):
+    def __init__(self, side_length, outputs, features=[32, 64, 128]):
         super(DQN, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=5, stride=1, padding=2)
-        self.bn1 = nn.BatchNorm2d(num_features=32)
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=features[0], kernel_size=5, stride=1, padding=2)
+        self.bn1 = nn.BatchNorm2d(num_features=features[0])
         self.mp1 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm2d(num_features=64)
+        self.conv2 = nn.Conv2d(in_channels=features[0], out_channels=features[1], kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(num_features=features[0])
         self.mp2 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1)
-        self.bn3 = nn.BatchNorm2d(num_features=128)
+        self.conv3 = nn.Conv2d(in_channels=features[1], out_channels=features[2], kernel_size=3, stride=1, padding=1)
+        self.bn3 = nn.BatchNorm2d(num_features=features[2])
 
         def calc_out_shape(l, k, s, p):
             return (l - k + 2 * p) // s + 1
