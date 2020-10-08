@@ -33,7 +33,9 @@ class DQN(nn.Module):
 
     # return [P(stright),P(right),P(left)]
     def forward(self, x):
-        x = self.mp1(F.relu(self.bn1(self.conv1(x))))
-        x = self.mp2(F.relu(self.bn2(self.conv2(x))))
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = self.mp1(x)
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = self.mp2(x)
         x = F.relu(self.bn3(self.conv3(x)))
         return self.linear(x.contiguous().view(x.size(0), -1))

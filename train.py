@@ -52,7 +52,7 @@ plt.ion()
 def init_wandb(args, tag):
     # initialize weights and biases.
     wandb.init(project="Snake-RL", dir="../wandb/", tags=[tag])
-    wandb.tensorboard.patch(save=True, tensorboardX=True)
+    wandb.tensorboard.patch(save=True, tensorboardX=False)
     wandb.config.update(args)
 
 
@@ -158,7 +158,7 @@ def main(args):
     init_wandb(args, tag="snake RL")
     now = datetime.datetime.now()
     run_name = get_run_name()
-    logger = SummaryWriter(log_dir="../.runs/{}_{}".format(now.strftime("%Y-%m-%d_%H_%M"), run_name))
+    logger = SummaryWriter(log_dir="./.runs/{}_{}".format(now.strftime("%Y-%m-%d_%H_%M"), run_name))
     output_dir = os.path.join(args.output_dir, "{}_{}".format(now.strftime("%Y-%m-%d_%H_%M"), run_name))
     os.makedirs(output_dir, exist_ok=True)
     pygame.font.init()
@@ -244,7 +244,6 @@ if __name__ == "__main__":
     parser.add_argument("--episodes", help="number of training episodes", default=1000)
     parser.add_argument("--screen_size", help="screen size", default=400)
     parser.add_argument("--block_size", help="game block_size", default=20)
-    # parser.add_argument("--game_speed",help="game_speed (sleep duration)",type=int,default=30)
     parser.add_argument("--save_interval", help="interval between saving weights", default=100, type=int)
     parser.add_argument("--pretrained", help="pre trained checkpoint", default=None)
     parser.add_argument("--reward", help="reward for eating,dying", default="100,-100")
