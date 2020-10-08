@@ -1,3 +1,39 @@
 """
 Created by Edward Li at 10/7/20
+Using a CNN structure from this paper (https://www.diva-portal.org/smash/get/diva2:1342302/FULLTEXT01.pdf)
+and Google Deep mind
 """
+import torch.functional as F
+import torch.nn as nn
+
+
+class DQN(nn.Module):
+    def __init__(self, side_length, outputs):
+        super(DQN, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=5, stride=1, padding=2)
+        self.bn1 = nn.BatchNorm2d(num_features=32)
+        self.mp1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(num_features=64)
+        self.mp2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1)
+        self.bn3 = nn.BatchNorm2d(num_features=128)
+
+        def calc_out_shape(l, k, s, p):
+            return (l - k + 2 * p) // s + 1
+
+        # calculate shape
+        side_length = calc_out_shape(side_length, 5, 1, 2)  # after first conv
+        side_length = calc_out_shape(side_length, 2, 2, 0)  # after first maxpool
+        side_length = calc_out_shape(side_length, 1, 1)  # after second conv
+        side_length = calc_out_shape(side_length, 2, 2, 0)  # after second maxpool
+        side_length = calc_out_shape(side_length, 3, 1, 1)  # after third conv
+
+        self.linear = nn.Linear(side_length * side_length * 128, outputs)
+
+    # return [P(stright),P(right),P(left)]
+    def forward(self, x):
+        x = self.mp1(F.relu(self.bn1(self.conv1(x))))
+        x = self.mp2(F.relu(self.bn2(self.conv2(x))))
+        x = F.relu(self.bn3(self.conv3(x)))
+        return self.linear(x.view(x.size(0), -1))

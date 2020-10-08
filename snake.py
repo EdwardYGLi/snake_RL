@@ -8,6 +8,7 @@ import random
 import sys
 from collections import deque
 
+import cv2
 import numpy as np
 import pygame
 
@@ -21,6 +22,10 @@ def display(player, food, game, record):
     display_ui(game, game.score, record)
     player.display_player(game)
     food.display_food(game)
+    image = pygame.surfarray.array3d(pygame.display.get_surface()).swapaxes(0, 1)
+    #     image = cv2.resize([:-40, :, ::-1],
+    #                        (game.width // game.block_size, game.height // game.block_size), cv2.INTER_AREA)
+    return image
 
 
 def display_ui(game, score, record):
@@ -34,7 +39,7 @@ def display_ui(game, score, record):
     game.gameDisplay.blit(text_score_number, (120, game.height + 20))
     game.gameDisplay.blit(text_highest, (190, game.height + 20))
     game.gameDisplay.blit(text_highest_number, (350, game.height + 20))
-    game.gameDisplay.blit(game.bg, (0,0))
+    game.gameDisplay.blit(game.bg, (0, 0))
 
 
 def get_record(score, record):
@@ -58,7 +63,7 @@ class Snake:
         self.block_size = block_size
         self.player = Player(self)
         self.food = Food(self)
-        
+
     def reset(self):
         self.player.reset()
         self.food.reset()
@@ -85,7 +90,7 @@ class Player:
         self.delta_y = 0
         self.food = 1
         self.eaten = False
-        
+
     def reset(self):
         # start in the center of the screen
         self.x = self.game.width // 2
@@ -143,9 +148,9 @@ class Player:
         self.x = x + self.delta_x
         self.y = y + self.delta_y
 
-        if self.x < game.margin or self.x > game.width - 2*game.margin \
+        if self.x < game.margin or self.x > game.width - 2 * game.margin \
                 or self.y < game.margin \
-                or self.y > game.height - 2*game.margin \
+                or self.y > game.height - 2 * game.margin \
                 or [self.x, self.y] in self.position:
             game.crash = True
 
@@ -161,10 +166,9 @@ class Player:
             for i in range(self.food):
                 x_temp, y_temp = self.position[len(self.position) - 1 - i]
                 if i == 0:
-                    game.gameDisplay.blit(self.head_image,(x_temp,y_temp))
+                    game.gameDisplay.blit(self.head_image, (x_temp, y_temp))
                 else:
                     game.gameDisplay.blit(self.image, (x_temp, y_temp))
-
             update_screen()
         else:
             pygame.time.wait(300)
@@ -207,7 +211,7 @@ class Food:
 def run_game(speed):
     pygame.init()
     main = True
-    game = Snake(1000, 1000, 20)
+    game = Snake(500, 500, 20)
     player = game.player
     food = game.food
     record = 0
