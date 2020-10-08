@@ -189,7 +189,7 @@ class Player:
 class Food:
     def __init__(self, game):
         self.game = game
-        self.image = pygame.image.load("assets/apple.jpg")
+        self.image = pygame.image.load("assets/apple.png")
         self.image = pygame.transform.scale(self.image, (game.block_size, game.block_size))
         # mod by grid size so its grid aligned.
         self.x_food = random.randint(game.block_size, game.width - 2 * game.block_size)
