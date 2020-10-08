@@ -80,7 +80,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def optimize_model(args, memory, policy_net, target_net, optimizer):
     if len(memory) < args.batch_size:
-        return
+        return None
     transitions = memory.sample(args.batch_size)
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
     # detailed explanation). This converts batch-array of Transitions
@@ -121,6 +121,8 @@ def optimize_model(args, memory, policy_net, target_net, optimizer):
     for param in policy_net.parameters():
         param.grad.data.clamp_(-1, 1)
     optimizer.step()
+
+    return loss.item()
 
 
 def get_env_state(image, game, state_scale):
@@ -191,6 +193,7 @@ def main(args):
         curr_state = last_state
         state = last_state - curr_state
         score = 0
+        episode_loss = 0
         for t in count():
             # select action based on state
             action = select_action(state, policy_net, __num_actions__, *args.eps)
@@ -213,13 +216,15 @@ def main(args):
             state = next_state
 
             # perform one optimization step (on the target network)
-            optimize_model(args, memory, policy_net, target_net, optimizer)
-
+            loss = optimize_model(args, memory, policy_net, target_net, optimizer)
+            if loss is not None:
+                episode_loss += loss
             if game.crash:
                 score_plot.append(score)
                 durations.append(t + 1)
                 logger.add_scalar("game record", score, global_step=epi)
                 logger.add_scalar("game duration", t + 1, global_step=epi)
+                logger.add_scalar("episode loss", episode_loss/(t+1),global_step=epi)
                 break
 
         new_record = get_record(score, record)
@@ -244,9 +249,9 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", help="batch_size", type=int, default=128)
     parser.add_argument("--gamma", help="gamma, for balancing near/long term reward", type=float, default=0.999)
     parser.add_argument("--eps", help="epsilon, in 'start, end, decay' format", default="0.9,0.05,200")
-    parser.add_argument("--target_update", help="duration before update", default=10)
+    parser.add_argument("--target_update", help="duration before update", default=10,type=int)
     parser.add_argument("--conv_features", help="convolution feature size, in 'f1,f2,f3' format", default="32,64,128")
-    parser.add_argument("--episodes", help="number of training episodes", default=1000)
+    parser.add_argument("--episodes", help="number of training episodes", default=1000,type=int)
     parser.add_argument("--screen_size", help="screen size", default=400, type=int)
     parser.add_argument("--block_size", help="game block_size", default=20, type=int)
     parser.add_argument("--state_scale", help="scale of downsized state image", default=1, type=int)
