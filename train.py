@@ -11,7 +11,6 @@ from itertools import count
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
 import pygame
 import torch
 import torch.nn.functional as F
@@ -124,15 +123,18 @@ def optimize_model(args, memory, policy_net, target_net, optimizer):
     optimizer.step()
 
 
-def get_env_state(image, game):
-    image = cv2.resize(image[:-40, :, ::-1]/255, (game.width // game.block_size, game.height // game.block_size),
+def get_env_state(image, game, state_scale):
+    image = cv2.resize(image[:-40, :, ::-1] / 255,
+                       (game.width * state_scale // game.block_size, game.height * state_scale // game.block_size),
                        cv2.INTER_AREA)
-    image_tensor = torch.tensor(image,dtype=torch.float32).permute(2,0,1).unsqueeze(0).to(device)
+    cv2.imshow("state", image)
+    cv2.waitKey(1)
+    image_tensor = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device)
     return image, image_tensor
 
 
 def get_reward(player, crash, rewards):
-    reward = -1
+    reward = 0
     if crash:
         reward = rewards[1]
         return reward
@@ -163,8 +165,10 @@ def main(args):
     os.makedirs(output_dir, exist_ok=True)
     pygame.font.init()
     pygame.init()
-    policy_net = DQN(args.screen_size // args.block_size, __num_actions__, args.conv_features).to(device)
-    target_net = DQN(args.screen_size // args.block_size, __num_actions__, args.conv_features).to(device)
+    policy_net = DQN(args.screen_size * args.state_scale // args.block_size, __num_actions__, args.conv_features).to(
+        device)
+    target_net = DQN(args.screen_size * args.state_scale // args.block_size, __num_actions__, args.conv_features).to(
+        device)
     if args.pretrained is not None:
         policy_net.load_state_dict(torch.load(args.pretrained))
     target_net.load_state_dict(policy_net.state_dict())
@@ -176,13 +180,14 @@ def main(args):
     score_plot = []
     durations = []
     record = 0
+    game = Snake(args.screen_size, args.screen_size, block_size=args.block_size)
+    player = game.player
+    food = game.food
+    # init move
+    player.move([1, 0, 0], player.x, player.y, game, food)
     for epi in tqdm(range(args.episodes)):
-        game = Snake(args.screen_size, args.screen_size, block_size=20, margin=20)
-        player = game.player
-        food = game.food
-        # init move
-        player.move([1, 0, 0], player.x, player.y, game, food)
-        last_image, last_state = get_env_state(display(player, food, game, record), game)
+        game.reset()
+        last_image, last_state = get_env_state(display(player, food, game, record), game, args.state_scale)
         curr_state = last_state
         state = last_state - curr_state
         score = 0
@@ -195,7 +200,7 @@ def main(args):
             score = game.score
             # observer our new state
             last_state = curr_state
-            curr_image, curr_state = get_env_state(display(player, food, game, record), game)
+            curr_image, curr_state = get_env_state(display(player, food, game, record), game, args.state_scale)
             if not game.crash:
                 next_state = curr_state - last_state
             else:
@@ -242,8 +247,9 @@ if __name__ == "__main__":
     parser.add_argument("--target_update", help="duration before update", default=10)
     parser.add_argument("--conv_features", help="convolution feature size, in 'f1,f2,f3' format", default="32,64,128")
     parser.add_argument("--episodes", help="number of training episodes", default=1000)
-    parser.add_argument("--screen_size", help="screen size", default=400)
-    parser.add_argument("--block_size", help="game block_size", default=20)
+    parser.add_argument("--screen_size", help="screen size", default=400, type=int)
+    parser.add_argument("--block_size", help="game block_size", default=20, type=int)
+    parser.add_argument("--state_scale", help="scale of downsized state image", default=1, type=int)
     parser.add_argument("--save_interval", help="interval between saving weights", default=100, type=int)
     parser.add_argument("--pretrained", help="pre trained checkpoint", default=None)
     parser.add_argument("--reward", help="reward for eating,dying", default="100,-10")

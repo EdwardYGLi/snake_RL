@@ -38,7 +38,8 @@ def display_ui(game, score, record):
     game.game_display.blit(text_score_number, (120, game.height + 20))
     game.game_display.blit(text_highest, (190, game.height + 20))
     game.game_display.blit(text_highest_number, (350, game.height + 20))
-    game.game_display.blit(game.bg, (0, 0))
+    new_surf = pygame.pixelcopy.make_surface(game.bg)
+    game.game_display.blit(new_surf,(0,0))
 
 
 def get_record(score, record):
@@ -49,17 +50,21 @@ def get_record(score, record):
 
 
 class Snake:
-    def __init__(self, width, height, block_size=20, margin=20):
+    def __init__(self, width, height, block_size=20):
         pygame.display.set_caption("Snake_RL")
         self.width = width
         self.height = height
-        self.bg = pygame.image.load("assets/background.png")
-        self.bg = pygame.transform.scale(self.bg, (width, height))
+        self.bg = np.ones((width, height, 3), dtype=np.uint8) * 255
+        self.bg[:block_size, :, :] = 0
+        self.bg[:, :block_size, :] = 0
+        self.bg[-block_size:, :, :] = 0
+        self.bg[:, -block_size:, :] = 0
+        self.bg = self.bg.swapaxes(0,1)
+
         self.game_display = pygame.display.set_mode((width, height + 40))
         self.game_buffer = None
         self.score = 0
         self.crash = False
-        self.margin = margin
         self.block_size = block_size
         self.player = Player(self)
         self.food = Food(self)
@@ -90,11 +95,12 @@ class Player:
         self.x = self.x - self.x % self.game.block_size
         self.y = self.y - self.y % self.game.block_size
         self.position = deque()
-        self.position.extend(
-            [[self.x - 2 * game.block_size, self.y], [self.x - game.block_size, self.y], [self.x, self.y]])
+        self.position.append([self.x, self.y])
+        # self.position.extend(
+        #     [[self.x - 2 * game.block_size, self.y], [self.x - game.block_size, self.y], [self.x, self.y]])
         self.delta_x = self.game.block_size
         self.delta_y = 0
-        self.food = 3
+        self.food = 1
         self.eaten = False
 
     def reset(self):
@@ -154,9 +160,9 @@ class Player:
         self.x = x + self.delta_x
         self.y = y + self.delta_y
 
-        if self.x < game.margin or self.x > game.width - 2 * game.margin \
-                or self.y < game.margin \
-                or self.y > game.height - 2 * game.margin \
+        if self.x < game.block_size or self.x > game.width - 2 * game.block_size \
+                or self.y < game.block_size \
+                or self.y > game.height - 2 * game.block_size \
                 or [self.x, self.y] in self.position:
             game.crash = True
 
@@ -184,25 +190,25 @@ class Food:
     def __init__(self, game):
         self.game = game
         self.image = pygame.image.load("assets/apple.jpg")
-        self.image = pygame.transform.scale(self.image, (game.margin, game.margin))
+        self.image = pygame.transform.scale(self.image, (game.block_size, game.block_size))
         # mod by grid size so its grid aligned.
-        self.x_food = random.randint(game.margin, game.width - 2 * game.margin)
+        self.x_food = random.randint(game.block_size, game.width - 2 * game.block_size)
         self.x_food = self.x_food - self.x_food % game.block_size
-        self.y_food = random.randint(game.margin, game.height - 2 * game.margin)
+        self.y_food = random.randint(game.block_size, game.height - 2 * game.block_size)
         self.y_food = self.y_food - self.y_food % game.block_size
 
     def reset(self):
         # mod by grid size so its grid aligned.
-        self.x_food = random.randint(self.game.margin, self.game.width - 2 * self.game.margin)
+        self.x_food = random.randint(self.game.block_size, self.game.width - 2 * self.game.block_size)
         self.x_food = self.x_food - self.x_food % self.game.block_size
-        self.y_food = random.randint(self.game.margin, self.game.height - 2 * self.game.margin)
+        self.y_food = random.randint(self.game.block_size, self.game.height - 2 * self.game.block_size)
         self.y_food = self.y_food - self.y_food % self.game.block_size
 
     def next_food(self, game, player):
-        self.x_food = random.randint(game.margin, game.width - 2 * game.margin)
+        self.x_food = random.randint(game.block_size, game.width - 2 * game.block_size)
         self.x_food = self.x_food - self.x_food % game.block_size
 
-        self.y_food = random.randint(game.margin, game.height - 2 * game.margin)
+        self.y_food = random.randint(game.block_size, game.height - 2 * game.block_size)
         self.y_food = self.y_food - self.y_food % game.block_size
         if (self.x_food, self.y_food) not in player.position:
             return self.x_food, self.y_food
@@ -256,6 +262,6 @@ def run_game(speed):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--speed", type=int, default=100)
+    parser.add_argument("--speed", type=int, default=1)
     args = parser.parse_args()
     run_game(100 - args.speed)
