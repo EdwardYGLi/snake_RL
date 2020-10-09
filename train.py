@@ -1,9 +1,9 @@
 """
 Created by Edward Li at 10/7/20
+following training from (https://www.diva-portal.org/smash/get/diva2:1342302/FULLTEXT01.pdf)
 """
 import argparse
 import datetime
-import math
 import os
 import random
 from itertools import count
@@ -61,10 +61,11 @@ global_steps = 0
 def select_action(state, policy_net, n_actions, eps_start, eps_end, eps_decay):
     global global_steps
     sample = random.random()
+    # exponential decay
     # eps_threshold = eps_end + (eps_start - eps_end) * \
     #                 math.exp(-1. * global_steps / eps_decay)
     # linear epsilon decay
-    eps_threshold = eps_end + (eps_start- global_steps*eps_decay)
+    eps_threshold = max((eps_start - global_steps * eps_decay),eps_end)
     global_steps += 1
     if sample > eps_threshold:
         with torch.no_grad():
@@ -138,7 +139,7 @@ def get_env_state(image, game, state_scale):
 def get_state_from_env(game):
     state = game.get_state()
     state_tensor = torch.tensor(state, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device)
-    return state,state_tensor
+    return state, state_tensor
 
 
 def get_reward(player, crash, rewards):
@@ -173,9 +174,11 @@ def main(args):
     os.makedirs(output_dir, exist_ok=True)
     pygame.font.init()
     pygame.init()
-    policy_net = DQN(args.screen_size * args.state_scale // args.block_size, __num_actions__, args.conv_features).to(
+    policy_net = DQN(args.screen_size * args.state_scale // args.block_size, __num_actions__, in_channels=1,
+                     features=args.conv_features).to(
         device)
-    target_net = DQN(args.screen_size * args.state_scale // args.block_size, __num_actions__, args.conv_features).to(
+    target_net = DQN(args.screen_size * args.state_scale // args.block_size, __num_actions__, in_channels=1,
+                     features=args.conv_features).to(
         device)
     if args.pretrained is not None:
         policy_net.load_state_dict(torch.load(args.pretrained))
@@ -188,24 +191,25 @@ def main(args):
     score_plot = []
     durations = []
     record = 0
-    game = Snake(args.screen_size, args.screen_size, block_size=args.block_size,state_scale = args.state_scale)
+    game = Snake(args.screen_size, args.screen_size, block_size=args.block_size, state_scale=args.state_scale)
     player = game.player
     food = game.food
     # init move
     player.move([1, 0, 0], player.x, player.y, game, food)
     for epi in tqdm(range(args.episodes)):
+        if epi > args.episodes//2:
+            args.show_game = True
         game.reset()
         last_image, last_state = get_state_from_env(game)
-        cv2.imshow("state",last_image)
-        cv2.waitKey(1)
-        #get_env_state(display(player, food, game, record), game, args.state_scale)
+        # get_env_state(display(player, food, game, record), game, args.state_scale)
         if args.show_game:
-            display(player,food,game,record)
-            
+            display(player, food, game, record)
+
         curr_state = last_state
         state = last_state - curr_state
         score = 0
         episode_loss = 0
+
         for t in count():
             # select action based on state
             action = select_action(state, policy_net, __num_actions__, *args.eps)
@@ -240,7 +244,7 @@ def main(args):
                 durations.append(t + 1)
                 logger.add_scalar("game record", score, global_step=epi)
                 logger.add_scalar("game duration", t + 1, global_step=epi)
-                logger.add_scalar("episode loss", episode_loss/(t+1),global_step=epi)
+                logger.add_scalar("episode loss", episode_loss / (t + 1), global_step=epi)
                 break
 
         new_record = get_record(score, record)
@@ -262,14 +266,14 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("snake-rl training parser")
     parser.add_argument("--speed", help="game_speed", type=int, default=10)
-    parser.add_argument("--show_game",help="show game visuals?",action="store_true")
+    parser.add_argument("--show_game", help="show game visuals?", action="store_true")
     parser.add_argument("--batch_size", help="batch_size", type=int, default=128)
     parser.add_argument("--gamma", help="gamma, for balancing near/long term reward", type=float, default=0.999)
-    parser.add_argument("--memory_size",help="size of memory",type=int, default=10000)
+    parser.add_argument("--memory_size", help="size of memory", type=int, default=10000)
     parser.add_argument("--eps", help="epsilon, in 'start, end, decay' format", default="0.9,0.05,200")
-    parser.add_argument("--target_update", help="duration before update", default=10,type=int)
+    parser.add_argument("--target_update", help="duration before update", default=10, type=int)
     parser.add_argument("--conv_features", help="convolution feature size, in 'f1,f2,f3' format", default="32,64,128")
-    parser.add_argument("--episodes", help="number of training episodes", default=1000,type=int)
+    parser.add_argument("--episodes", help="number of training episodes", default=1000, type=int)
     parser.add_argument("--screen_size", help="screen size", default=400, type=int)
     parser.add_argument("--block_size", help="game block_size", default=20, type=int)
     parser.add_argument("--state_scale", help="scale of downsized state image", default=1, type=int)
