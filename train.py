@@ -203,13 +203,11 @@ def main(args):
         if epi > args.episodes//2:
             args.show_game = True
         game.reset()
-        last_image, last_state = get_state_from_env(game)
+        state_image, state = get_state_from_env(game)
         # get_env_state(display(player, food, game, record), game, args.state_scale)
         if args.show_game:
             display(player, food, game, record)
 
-        curr_state = last_state
-        state = last_state - curr_state
         score = 0
         episode_loss = 0
 
@@ -221,15 +219,12 @@ def main(args):
             reward = torch.tensor([get_reward(player, game.crash, args.reward)], device=device)
             score = game.score
             # observer our new state
-            last_state = curr_state
-            curr_image, curr_state = get_state_from_env(game)
+            next_image, next_state = get_state_from_env(game)
 
             if args.show_game:
                 display(player, food, game, record)
 
-            if not game.crash:
-                next_state = curr_state - last_state
-            else:
+            if game.crash:
                 next_state = None
 
             # store the transition in memory
