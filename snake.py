@@ -9,6 +9,7 @@ import sys
 from collections import deque
 
 import numpy as np
+import cv2
 import pygame
 
 __num_actions__ = 3
@@ -50,10 +51,13 @@ def get_record(score, record):
 
 
 class Snake:
-    def __init__(self, width, height, block_size=20):
+    def __init__(self, width, height, block_size=20,state_scale = 1):
         pygame.display.set_caption("Snake_RL")
         self.width = width
         self.height = height
+        self.state_w = width//block_size * state_scale
+        self.state_h = height//block_size * state_scale
+        self.state_scale = state_scale
         self.bg = np.ones((width, height, 3), dtype=np.uint8) * 255
         self.bg[:block_size, :, :] = 0
         self.bg[:, :block_size, :] = 0
@@ -73,6 +77,18 @@ class Snake:
             1: np.array([0, 1, 0]),
             2: np.array([0, 0, 1])
         }
+
+    def get_state(self):
+        state = np.zeros((self.state_h,self.state_w,1),dtype=np.float)
+        # draw borders
+        state[:self.state_scale,:,:] = 4
+        state[:,:self.state_scale,:] = 4
+        state[-self.state_scale:,:,:] = 4
+        state[:,-self.state_scale:,:] = 4
+
+        state = self.player.update_state(state,self)
+        state = self.food.update_state(state,self)
+        return state
 
     def reset(self):
         self.player.reset()
@@ -173,6 +189,18 @@ class Player:
 
         self.update_position(self.x, self.y)
 
+    def update_state(self,state,game):
+        if not game.crash:
+            for i in range(self.food):
+                x_temp, y_temp = self.position[len(self.position) - 1 - i]
+                x_temp = x_temp//game.block_size * game.state_scale
+                y_temp = y_temp//game.block_size * game.state_scale
+                if i == 0:
+                    state[y_temp,x_temp] = 1
+                else:
+                    state[y_temp,x_temp] = 2
+        return state
+
     def display_player(self, game):
         if not game.crash:
             for i in range(self.food):
@@ -218,6 +246,12 @@ class Food:
     def display_food(self, game):
         game.game_display.blit(self.image, (self.x_food, self.y_food))
         update_screen()
+
+    def update_state(self,state,game):
+        x = self.x_food//game.block_size * game.state_scale
+        y = self.y_food//game.block_size * game.state_scale
+        state[y,x,:] = 3
+        return state
 
 
 def run_game(speed):

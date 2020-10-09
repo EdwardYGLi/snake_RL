@@ -61,8 +61,10 @@ global_steps = 0
 def select_action(state, policy_net, n_actions, eps_start, eps_end, eps_decay):
     global global_steps
     sample = random.random()
-    eps_threshold = eps_end + (eps_start - eps_end) * \
-                    math.exp(-1. * global_steps / eps_decay)
+    # eps_threshold = eps_end + (eps_start - eps_end) * \
+    #                 math.exp(-1. * global_steps / eps_decay)
+    # linear epsilon decay
+    eps_threshold = eps_end + (eps_start- global_steps*eps_decay)
     global_steps += 1
     if sample > eps_threshold:
         with torch.no_grad():
@@ -129,10 +131,14 @@ def get_env_state(image, game, state_scale):
     image = cv2.resize(image[:-40, :, ::-1] / 255,
                        (game.width * state_scale // game.block_size, game.height * state_scale // game.block_size),
                        cv2.INTER_AREA)
-    cv2.imshow("state", image)
-    cv2.waitKey(1)
     image_tensor = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device)
     return image, image_tensor
+
+
+def get_state_from_env(game):
+    state = game.get_state()
+    state_tensor = torch.tensor(state, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device)
+    return state,state_tensor
 
 
 def get_reward(player, crash, rewards):
@@ -182,14 +188,20 @@ def main(args):
     score_plot = []
     durations = []
     record = 0
-    game = Snake(args.screen_size, args.screen_size, block_size=args.block_size)
+    game = Snake(args.screen_size, args.screen_size, block_size=args.block_size,state_scale = args.state_scale)
     player = game.player
     food = game.food
     # init move
     player.move([1, 0, 0], player.x, player.y, game, food)
     for epi in tqdm(range(args.episodes)):
         game.reset()
-        last_image, last_state = get_env_state(display(player, food, game, record), game, args.state_scale)
+        last_image, last_state = get_state_from_env(game)
+        cv2.imshow("state",last_image)
+        cv2.waitKey(1)
+        #get_env_state(display(player, food, game, record), game, args.state_scale)
+        if args.show_game:
+            display(player,food,game,record)
+            
         curr_state = last_state
         state = last_state - curr_state
         score = 0
@@ -203,7 +215,11 @@ def main(args):
             score = game.score
             # observer our new state
             last_state = curr_state
-            curr_image, curr_state = get_env_state(display(player, food, game, record), game, args.state_scale)
+            curr_image, curr_state = get_state_from_env(game)
+
+            if args.show_game:
+                display(player, food, game, record)
+
             if not game.crash:
                 next_state = curr_state - last_state
             else:
@@ -246,6 +262,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("snake-rl training parser")
     parser.add_argument("--speed", help="game_speed", type=int, default=10)
+    parser.add_argument("--show_game",help="show game visuals?",action="store_true")
     parser.add_argument("--batch_size", help="batch_size", type=int, default=128)
     parser.add_argument("--gamma", help="gamma, for balancing near/long term reward", type=float, default=0.999)
     parser.add_argument("--memory_size",help="size of memory",type=int, default=10000)
