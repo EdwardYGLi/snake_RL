@@ -50,7 +50,7 @@ plt.ion()
 
 def init_wandb(args, tag):
     # initialize weights and biases.
-    wandb.init(project="Snake-RL", dir="../wandb/", tags=[tag])
+    wandb.init(project="Snake-RL", dir="./.wandb/", tags=[tag])
     wandb.tensorboard.patch(save=True, tensorboardX=False)
     wandb.config.update(args)
 
@@ -66,6 +66,7 @@ def select_action(state, policy_net, n_actions, eps_start, eps_end, eps_decay):
     #                 math.exp(-1. * global_steps / eps_decay)
     # linear epsilon decay
     eps_threshold = max((eps_start - global_steps * eps_decay),eps_end)
+
     global_steps += 1
     if sample > eps_threshold:
         with torch.no_grad():
@@ -180,6 +181,8 @@ def main(args):
     target_net = DQN(args.screen_size * args.state_scale // args.block_size, __num_actions__, in_channels=1,
                      features=args.conv_features).to(
         device)
+    wandb.watch(policy_net)
+
     if args.pretrained is not None:
         policy_net.load_state_dict(torch.load(args.pretrained))
     target_net.load_state_dict(policy_net.state_dict())
