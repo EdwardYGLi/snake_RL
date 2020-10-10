@@ -111,6 +111,8 @@ class Player:
         # mod by grid size so its grid aligned.
         self.x = self.x - self.x % self.game.block_size
         self.y = self.y - self.y % self.game.block_size
+        self.prev_x = self.x
+        self.prev_y = self.y
 
         self.position = deque()
         self.position.append([self.x, self.y])
@@ -175,6 +177,10 @@ class Player:
             # left - going vertical
             self.delta_x = self.delta_y
             self.delta_y = 0
+        
+        self.prev_x = self.x
+        self.prev_y = self.y
+
         self.x = x + self.delta_x
         self.y = y + self.delta_y
 
@@ -204,16 +210,16 @@ class Player:
         return state
 
     def display_player(self, game):
-        if not game.crash:
-            for i in range(self.food):
-                x_temp, y_temp = self.position[len(self.position) - 1 - i]
-                if i == 0:
-                    game.game_display.blit(self.head_image, (x_temp, y_temp))
-                else:
-                    game.game_display.blit(self.image, (x_temp, y_temp))
-            update_screen()
-        else:
-            pygame.time.wait(300)
+        # if not game.crash:
+        for i in range(self.food):
+            x_temp, y_temp = self.position[len(self.position) - 1 - i]
+            if i == 0:
+                game.game_display.blit(self.head_image, (x_temp, y_temp))
+            else:
+                game.game_display.blit(self.image, (x_temp, y_temp))
+        update_screen()
+        # else:
+        #     pygame.time.wait(300)
 
 
 class Food:

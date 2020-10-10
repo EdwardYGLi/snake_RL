@@ -9,9 +9,9 @@ import random
 from itertools import count
 
 import cv2
-import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 import pygame
 import torch
 import torch.nn.functional as F
@@ -150,11 +150,16 @@ def get_reward(player, food, game, rewards):
     if player.eaten:
         return rewards[0]
     # the diagonal length is the longest in the grid
-    dist_reward = 10 if len(rewards) < 3 else rewards[2]
-    dist = np.sqrt((food.x_food - player.x) ** 2 + (food.y_food - player.y) ** 2)/game.block_size
+    dist_reward_scale = 10 if len(rewards) < 3 else rewards[2]
+    dist = np.sqrt((food.x_food - player.x) ** 2 + (food.y_food - player.y) ** 2) / game.block_size
+    velocity = np.sqrt((player.x - player.prev_x) ** 2 + (player.y - player.prev_y) ** 2) / game.block_size
     # based on distance to food, reward the agent
-    reward = (1 - dist / game.diagonal) * (2 * dist_reward) - dist_reward
-    print(reward)
+    dist_reward = 1 - np.power(dist, 0.4)
+    # add a velocity discount
+    # vel_discount = np.power((1 - max(velocity, 0.1)), 1 / max(dist, 0.1))
+
+    print(dist_reward)
+    reward = dist_reward * dist_reward_scale
     return reward
 
 
@@ -196,8 +201,6 @@ def main(args):
     # use RMSprop here because there is uncertainty what momentum does in RL environment.
     optimizer = optim.RMSprop(policy_net.parameters())
     memory = ReplayMemory(args.memory_size)
-    score_plot = []
-    durations = []
     record = 0
     game = Snake(args.screen_size, args.screen_size, block_size=args.block_size, state_scale=args.state_scale)
     player = game.player
@@ -216,12 +219,14 @@ def main(args):
         score = 0
         episode_loss = 0
 
+        total_reward = 0
         for t in count():
             # select action based on state
             action = select_action(state, policy_net, __num_actions__, *args.eps)
             move = game.actions[action.item()]
             player.move(move, player.x, player.y, game, food)
-            reward = torch.tensor([get_reward(player, food, game, args.reward)], dtype=torch.float, device=device)
+            reward = get_reward(player, food, game, args.reward)
+            reward_tensor = torch.tensor([reward], dtype=torch.float, device=device)
 
             score = game.score
             # observer our new state
@@ -234,7 +239,7 @@ def main(args):
                 next_state = None
 
             # store the transition in memory
-            memory.push(state, action, next_state, reward)
+            memory.push(state, action, next_state, reward_tensor)
 
             # move to next state
             state = next_state
@@ -243,11 +248,14 @@ def main(args):
             loss = optimize_model(args, memory, policy_net, target_net, optimizer)
             if loss is not None:
                 episode_loss += loss
+
+            total_reward += reward
+
             if game.crash:
-                score_plot.append(score)
-                durations.append(t + 1)
                 logger.add_scalar("game record", score, global_step=epi)
                 logger.add_scalar("game duration", t + 1, global_step=epi)
+                logger.add_scalar("avg_reward", total_reward / (t + 1), global_step=epi)
+                logger.add_scalar("total_reward", total_reward, global_step=epi)
                 logger.add_scalar("episode loss", episode_loss / (t + 1), global_step=epi)
                 break
 
@@ -260,6 +268,9 @@ def main(args):
         if epi % args.target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
         if epi % args.save_interval == 0:
+            image = display(player, food, game, record)[:, :, ::-1]
+            cv2.imwrite(os.path.join(output_dir, "episode_{}_end_img.jpg"), image)
+            logger.add_image("episode_end_img", image, global_step=epi)
             save_ckpt(output_dir, "episode_{}_ckpt".format(epi), policy_net)
 
     print("Complete")
