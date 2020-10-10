@@ -152,13 +152,10 @@ def get_reward(player, food, game, rewards):
     # the diagonal length is the longest in the grid
     dist_reward_scale = 10 if len(rewards) < 3 else rewards[2]
     dist = np.sqrt((food.x_food - player.x) ** 2 + (food.y_food - player.y) ** 2) / game.block_size
-    velocity = np.sqrt((player.x - player.prev_x) ** 2 + (player.y - player.prev_y) ** 2) / game.block_size
+    # velocity = np.sqrt((player.x - player.prev_x) ** 2 + (player.y - player.prev_y) ** 2) / game.block_size
     # based on distance to food, reward the agent
     dist_reward = 1 - np.power(dist, 0.4)
-    # add a velocity discount
-    # vel_discount = np.power((1 - max(velocity, 0.1)), 1 / max(dist, 0.1))
 
-    print(dist_reward)
     reward = dist_reward * dist_reward_scale
     return reward
 
@@ -268,9 +265,9 @@ def main(args):
         if epi % args.target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
         if epi % args.save_interval == 0:
-            image = display(player, food, game, record)[:, :, ::-1]
+            image = display(player, food, game, record)
             cv2.imwrite(os.path.join(output_dir, "episode_{}_end_img.jpg"), image)
-            logger.add_image("episode_end_img", image, global_step=epi)
+            logger.add_image("episode_end_img",torch.from_numpy(image).permute(2, 0, 1), global_step=epi)
             save_ckpt(output_dir, "episode_{}_ckpt".format(epi), policy_net)
 
     print("Complete")
