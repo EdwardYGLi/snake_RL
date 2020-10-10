@@ -64,6 +64,7 @@ class Snake:
         self.bg[-block_size:, :, :] = 0
         self.bg[:, -block_size:, :] = 0
         self.bg = self.bg.swapaxes(0,1)
+        self.diagonal = np.sqrt((self.state_w - 1) ** 2 + (self.state_h - 1) ** 2)
 
         self.game_display = pygame.display.set_mode((width, height + 40))
         self.game_buffer = None
@@ -110,6 +111,7 @@ class Player:
         # mod by grid size so its grid aligned.
         self.x = self.x - self.x % self.game.block_size
         self.y = self.y - self.y % self.game.block_size
+
         self.position = deque()
         self.position.append([self.x, self.y])
         # self.position.extend(

@@ -9,6 +9,7 @@ import random
 from itertools import count
 
 import cv2
+import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pygame
@@ -65,7 +66,7 @@ def select_action(state, policy_net, n_actions, eps_start, eps_end, eps_decay):
     # eps_threshold = eps_end + (eps_start - eps_end) * \
     #                 math.exp(-1. * global_steps / eps_decay)
     # linear epsilon decay
-    eps_threshold = max((eps_start - global_steps * eps_decay),eps_end)
+    eps_threshold = max((eps_start - global_steps * eps_decay), eps_end)
 
     global_steps += 1
     if sample > eps_threshold:
@@ -143,13 +144,17 @@ def get_state_from_env(game):
     return state, state_tensor
 
 
-def get_reward(player, crash, rewards):
-    reward = 0
-    if crash:
-        reward = rewards[1]
-        return reward
+def get_reward(player, food, game, rewards):
+    if game.crash:
+        return rewards[1]
     if player.eaten:
-        reward = rewards[0]
+        return rewards[0]
+    # the diagonal length is the longest in the grid
+    dist_reward = 10 if len(rewards) < 3 else rewards[2]
+    dist = np.sqrt((food.x_food - player.x) ** 2 + (food.y_food - player.y) ** 2)/game.block_size
+    # based on distance to food, reward the agent
+    reward = (1 - dist / game.diagonal) * (2 * dist_reward) - dist_reward
+    print(reward)
     return reward
 
 
@@ -200,7 +205,7 @@ def main(args):
     # init move
     player.move([1, 0, 0], player.x, player.y, game, food)
     for epi in tqdm(range(args.episodes)):
-        if epi > args.episodes//2:
+        if epi > int(args.episodes * 0.8):
             args.show_game = True
         game.reset()
         state_image, state = get_state_from_env(game)
@@ -216,7 +221,8 @@ def main(args):
             action = select_action(state, policy_net, __num_actions__, *args.eps)
             move = game.actions[action.item()]
             player.move(move, player.x, player.y, game, food)
-            reward = torch.tensor([get_reward(player, game.crash, args.reward)], device=device)
+            reward = torch.tensor([get_reward(player, food, game, args.reward)], dtype=torch.float, device=device)
+
             score = game.score
             # observer our new state
             next_image, next_state = get_state_from_env(game)
@@ -282,5 +288,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.eps = [float(x) for x in args.eps.split(",")]
     args.conv_features = [int(x) for x in args.conv_features.split(",")]
-    args.reward = [int(x) for x in args.reward.split(",")]
+    args.reward = [float(x) for x in args.reward.split(",")]
     main(args)
