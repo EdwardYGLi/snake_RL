@@ -22,7 +22,7 @@ from tqdm import tqdm
 
 from DQN import DQNCNN, DQNFCN
 from replay_memory import Transition, ReplayMemory
-from snake import Snake, display, get_record, __num_actions__
+from snake import Snake, display, get_record
 
 
 def get_run_name():
@@ -253,7 +253,7 @@ def main(args):
 
         for t in count():
             # select action based on state
-            action = select_action(state, policy_net, __num_actions__, *args.eps)
+            action = select_action(state, policy_net, Snake.num_actions, *args.eps)
             move = game.actions[action.item()]
             player.move(move, player.x, player.y, game, food)
             reward = get_reward(player, food, game, args.reward)
@@ -307,7 +307,7 @@ def main(args):
             vid_writer.release()
             wandb.log({"video": wandb.Video(output_file,format="mp4",fps=30)})
             image = display(player, food, game, record)
-            cv2.imwrite(os.path.join(output_dir, "episode_{}_end_img.jpg"), image[:, :, ::-1])
+            cv2.imwrite(os.path.join(output_dir, "episode_{}_end_img.jpg").format(epi), image[:, :, ::-1])
             logger.add_image("episode_end_img", torch.from_numpy(image).permute(2, 0, 1), global_step=epi)
             save_ckpt(output_dir, "episode_{}_ckpt".format(epi), policy_net)
 
@@ -338,6 +338,6 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", help="output directory", default="./output")
     args = parser.parse_args()
     args.eps = [float(x) for x in args.eps.split(",")]
-    args.conv_features = [int(x) for x in args.conv_features.split(",")]
+    args.features = [int(x) for x in args.features.split(",")]
     args.reward = [float(x) for x in args.reward.split(",")]
     main(args)

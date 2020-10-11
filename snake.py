@@ -7,6 +7,7 @@ import argparse
 import random
 import sys
 from collections import deque
+import itertools
 
 import numpy as np
 import pygame
@@ -122,7 +123,7 @@ class Snake:
         body_down = []
         body_left = []
         if len(self.player.position) > 3:
-            for body in self.player.position[3:]:
+            for body in itertools.islice(self.player.position,3,None):
                 if distance(body,[self.player.x,self.player.y]) == self.block_size:
                     if body[0] < self.player.x:
                         body_down.append(1)
