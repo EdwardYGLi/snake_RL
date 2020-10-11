@@ -38,8 +38,21 @@ class DQNCNN(nn.Module):
         x = F.relu(self.bn2(self.conv2(x)))
         x = self.mp2(x)
         # x = F.relu(self.bn3(self.conv3(x)))
-        return self.linear(x.contiguous().view(x.size(0), -1))
+        return F.softmax(self.linear(x.contiguous().view(x.size(0), -1)))
 
 
 class DQNFCN(nn.Module):
-    pass
+    def __init__(self,state_size,action_size,features):
+        super(DQNFCN,self).__init__()
+        self.fc1 = nn.Linear(state_size,features[0])
+        self.fc2 = nn.Linear(features[0],features[1])
+        self.fc3 = nn.Linear(features[1],features[2])
+        self.action = nn.Linear(features[2],action_size)
+
+    def forward(self,x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.softmax(self.action(x))
+
+        return x

@@ -20,7 +20,7 @@ import wandb
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from DQN import DQNCNN
+from DQN import DQNCNN, DQNFCN
 from replay_memory import Transition, ReplayMemory
 from snake import Snake, display, get_record, __num_actions__
 
@@ -151,6 +151,12 @@ def get_state_cnn_from_env(game):
     return state, state_tensor
 
 
+def get_state_fcn_from_env(game):
+    state = game.get_state_fcn()
+    state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
+    return state, state_tensor
+
+
 def get_reward(player, food, game, rewards):
     if game.crash:
         return rewards[1]
@@ -189,12 +195,25 @@ def main(args):
     os.makedirs(output_dir, exist_ok=True)
     pygame.font.init()
     pygame.init()
-    policy_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, __num_actions__, in_channels=1,
-                        features=args.conv_features).to(
-        device)
-    target_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, __num_actions__, in_channels=1,
-                        features=args.conv_features).to(
-        device)
+    if args.training_type.lower() == "cnn":
+        policy_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=1,
+                            features=args.features).to(
+            device)
+        target_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=1,
+                            features=args.features).to(
+            device)
+        get_state = get_state_cnn_from_env
+    elif args.training_type.lower() == "fcn":
+        policy_net = DQNFCN(Snake.fcn_state_size, Snake.num_actions,
+                            features=args.features).to(
+            device)
+        target_net = DQNFCN(Snake.fcn_state_size, Snake.num_actions,
+                            features=args.features).to(
+            device)
+        get_state = get_state_fcn_from_env
+    else:
+        raise ValueError("network type not supportted")
+
     wandb.watch(policy_net)
 
     if args.pretrained is not None:
@@ -215,7 +234,7 @@ def main(args):
         if epi > int(args.episodes * 0.8):
             args.show_game = True
         game.reset()
-        state_image, state = get_state_cnn_from_env(game)
+        state_image, state = get_state(game)
         # get_env_state(display(player, food, game, record), game, args.state_scale)
         if args.show_game:
             display(player, food, game, record)
@@ -242,10 +261,10 @@ def main(args):
 
             score = game.score
             # observer our new state
-            next_image, next_state = get_state_cnn_from_env(game)
+            next_image, next_state = get_state(game)
 
             if args.show_game:
-                image = display(player, food, game, record)
+                display(player, food, game, record)
 
             if vid_writer is not None:
                 image = display(player, food, game, record)[:, :, ::-1]
@@ -286,7 +305,7 @@ def main(args):
         if epi % args.save_interval == 0:
             assert vid_writer is not None
             vid_writer.release()
-            wandb.log({"video": wandb.Video(output_file)})
+            wandb.log({"video": wandb.Video(output_file,format="mp4",fps=30)})
             image = display(player, food, game, record)
             cv2.imwrite(os.path.join(output_dir, "episode_{}_end_img.jpg"), image[:, :, ::-1])
             logger.add_image("episode_end_img", torch.from_numpy(image).permute(2, 0, 1), global_step=epi)
@@ -302,12 +321,13 @@ if __name__ == "__main__":
     parser.add_argument("--speed", help="game_speed", type=int, default=10)
     parser.add_argument("--show_game", help="show game visuals?", action="store_true")
     parser.add_argument("--batch_size", help="batch_size", type=int, default=128)
+    parser.add_argument("--training_type", help="type of training,(fcn, cnn)",default="cnn")
     parser.add_argument("--lr", help="learning rate", type=float, default=0.0003)
     parser.add_argument("--gamma", help="gamma, for balancing near/long term reward", type=float, default=0.999)
     parser.add_argument("--memory_size", help="size of memory", type=int, default=10000)
     parser.add_argument("--eps", help="epsilon, in 'start, end, decay' format", default="0.9,0.05,200")
     parser.add_argument("--target_update", help="duration before update", default=10, type=int)
-    parser.add_argument("--conv_features", help="convolution feature size, in 'f1,f2,f3' format", default="32,64,128")
+    parser.add_argument("--features", help="network layer feature size, in 'f1,f2,f3' format", default="32,64,128")
     parser.add_argument("--episodes", help="number of training episodes", default=1000, type=int)
     parser.add_argument("--screen_size", help="screen size", default=400, type=int)
     parser.add_argument("--block_size", help="game block_size", default=20, type=int)

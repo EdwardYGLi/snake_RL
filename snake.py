@@ -9,10 +9,7 @@ import sys
 from collections import deque
 
 import numpy as np
-import cv2
 import pygame
-
-__num_actions__ = 3
 
 
 def update_screen():
@@ -40,7 +37,7 @@ def display_ui(game, score, record):
     game.game_display.blit(text_highest, (190, game.height + 20))
     game.game_display.blit(text_highest_number, (350, game.height + 20))
     new_surf = pygame.pixelcopy.make_surface(game.bg)
-    game.game_display.blit(new_surf,(0,0))
+    game.game_display.blit(new_surf, (0, 0))
 
 
 def get_record(score, record):
@@ -51,19 +48,22 @@ def get_record(score, record):
 
 
 class Snake:
-    def __init__(self, width, height, block_size=20,state_scale = 1):
+    num_actions = 3
+    fcn_state_size = 12
+
+    def __init__(self, width, height, block_size=20, state_scale=1):
         pygame.display.set_caption("Snake_RL")
         self.width = width
         self.height = height
-        self.state_w = width//block_size * state_scale
-        self.state_h = height//block_size * state_scale
+        self.state_w = width // block_size * state_scale
+        self.state_h = height // block_size * state_scale
         self.state_scale = state_scale
         self.bg = np.ones((width, height, 3), dtype=np.uint8) * 255
         self.bg[:block_size, :, :] = 0
         self.bg[:, :block_size, :] = 0
         self.bg[-block_size:, :, :] = 0
         self.bg[:, -block_size:, :] = 0
-        self.bg = self.bg.swapaxes(0,1)
+        self.bg = self.bg.swapaxes(0, 1)
         self.diagonal = np.sqrt((self.state_w - 1) ** 2 + (self.state_h - 1) ** 2)
 
         self.game_display = pygame.display.set_mode((width, height + 40))
@@ -80,15 +80,84 @@ class Snake:
         }
 
     def get_state_cnn(self):
-        state = np.zeros((self.state_h,self.state_w,1),dtype=np.float)
+        state = np.zeros((self.state_h, self.state_w, 1), dtype=np.float)
         # draw borders
-        state[:self.state_scale,:,:] = 4
-        state[:,:self.state_scale,:] = 4
-        state[-self.state_scale:,:,:] = 4
-        state[:,-self.state_scale:,:] = 4
+        state[:self.state_scale, :, :] = 4
+        state[:, :self.state_scale, :] = 4
+        state[-self.state_scale:, :, :] = 4
+        state[:, -self.state_scale:, :] = 4
 
-        state = self.player.update_state(state,self)
-        state = self.food.update_state(state,self)
+        state = self.player.update_state_cnn(state, self)
+        state = self.food.update_state_cnn(state, self)
+        return state
+
+    def get_state_fcn(self):
+        # this state model is from https://github.com/henniedeharder/snake
+        # snake coordinates 0-1
+        snake_x, snake_y = self.player.x / self.width, self.player.y / self.height
+
+        # apple coordintes scaled 0-1
+        apple_x, apple_y = self.food.x_food / self.width, self.food.y_food / self.height
+
+        # wall check
+        if snake_y >= self.height*0.75:
+            wall_up, wall_down = 1, 0
+        elif snake_y <= self.height*0.25:
+            wall_up, wall_down = 0, 1
+        else:
+            wall_up, wall_down = 0, 0
+        if snake_x >= self.width*0.75:
+            wall_right, wall_left = 1, 0
+        elif snake_x <= self.width*0.25:
+            wall_right, wall_left = 0, 1
+        else:
+            wall_right, wall_left = 0, 0
+
+        def distance(body,head):
+            return (body[0]-head[0])**2 + (body[1]-head[1])**2
+
+        # body close
+        body_up = []
+        body_right = []
+        body_down = []
+        body_left = []
+        if len(self.player.position) > 3:
+            for body in self.player.position[3:]:
+                if distance(body,[self.player.x,self.player.y]) == self.block_size:
+                    if body[0] < self.player.x:
+                        body_down.append(1)
+                    elif body[1] > self.player.y:
+                        body_up.append(1)
+                    if body[0] < self.player.x:
+                        body_left.append(1)
+                    elif body[1] > self.player.y:
+                        body_right.append(1)
+
+        if len(body_up) > 0:
+            body_up = 1
+        else:
+            body_up = 0
+        if len(body_right) > 0:
+            body_right = 1
+        else:
+            body_right = 0
+        if len(body_down) > 0:
+            body_down = 1
+        else:
+            body_down = 0
+        if len(body_left) > 0:
+            body_left = 1
+        else:
+            body_left = 0
+
+        # state: apple_up, apple_right, apple_down, apple_left, obstacle_up, obstacle_right, obstacle_down, obstacle_left, direction_up, direction_right, direction_down, direction_left
+        state = [int(self.player.y < self.food.y_food), int(self.player.x < self.food.x_food), int(self.player.y > self.food.y_food),
+                 int(self.player.x > self.food.x_food), \
+                 int(wall_up or body_up), int(wall_right or body_right), int(wall_down or body_down),
+                 int(wall_left or body_left), \
+                 int(self.player.delta_x == 0 and self.player.delta_y< 0), int(self.player.delta_x >0 and self.player.delta_y == 0),
+                 int(self.player.delta_x ==0 and self.player.delta_y > 0), int(self.player.delta_x <0 and self.player.delta_y == 0)]
+
         return state
 
     def reset(self):
@@ -177,7 +246,7 @@ class Player:
             # left - going vertical
             self.delta_x = self.delta_y
             self.delta_y = 0
-        
+
         self.prev_x = self.x
         self.prev_y = self.y
 
@@ -197,16 +266,16 @@ class Player:
 
         self.update_position(self.x, self.y)
 
-    def update_state(self,state,game):
+    def update_state_cnn(self, state, game):
         if not game.crash:
             for i in range(self.food):
                 x_temp, y_temp = self.position[len(self.position) - 1 - i]
-                x_temp = x_temp//game.block_size * game.state_scale
-                y_temp = y_temp//game.block_size * game.state_scale
+                x_temp = x_temp // game.block_size * game.state_scale
+                y_temp = y_temp // game.block_size * game.state_scale
                 if i == 0:
-                    state[y_temp,x_temp] = 1
+                    state[y_temp, x_temp] = 1
                 else:
-                    state[y_temp,x_temp] = 2
+                    state[y_temp, x_temp] = 2
         return state
 
     def display_player(self, game):
@@ -255,10 +324,10 @@ class Food:
         game.game_display.blit(self.image, (self.x_food, self.y_food))
         update_screen()
 
-    def update_state(self,state,game):
-        x = self.x_food//game.block_size * game.state_scale
-        y = self.y_food//game.block_size * game.state_scale
-        state[y,x,:] = 3
+    def update_state_cnn(self, state, game):
+        x = self.x_food // game.block_size * game.state_scale
+        y = self.y_food // game.block_size * game.state_scale
+        state[y, x, :] = 3
         return state
 
 
