@@ -7,9 +7,9 @@ import torch.nn.functional as F
 import torch.nn as nn
 
 
-class DQN(nn.Module):
+class DQNCNN(nn.Module):
     def __init__(self, side_length, outputs, in_channels = 1, features=[32, 64, 128]):
-        super(DQN, self).__init__()
+        super(DQNCNN, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=features[0], kernel_size=5, stride=1, padding=2)
         self.bn1 = nn.BatchNorm2d(num_features=features[0])
         self.mp1 = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -39,3 +39,7 @@ class DQN(nn.Module):
         x = self.mp2(x)
         # x = F.relu(self.bn3(self.conv3(x)))
         return self.linear(x.contiguous().view(x.size(0), -1))
+
+
+class DQNFCN(nn.Module):
+    pass

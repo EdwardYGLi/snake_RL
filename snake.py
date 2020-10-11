@@ -79,7 +79,7 @@ class Snake:
             2: np.array([0, 0, 1])
         }
 
-    def get_state(self):
+    def get_state_cnn(self):
         state = np.zeros((self.state_h,self.state_w,1),dtype=np.float)
         # draw borders
         state[:self.state_scale,:,:] = 4

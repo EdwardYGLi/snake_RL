@@ -20,7 +20,7 @@ import wandb
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from DQN import DQN
+from DQN import DQNCNN
 from replay_memory import Transition, ReplayMemory
 from snake import Snake, display, get_record, __num_actions__
 
@@ -52,7 +52,7 @@ plt.ion()
 def init_wandb(args, tag):
     # initialize weights and biases.
     wandb.init(project="Snake-RL", dir="./.wandb/", tags=[tag])
-    wandb.tensorboard.patch(save=True, tensorboardX=False)
+    wandb.tensorboard.patch(save=False, tensorboardX=False)
     wandb.config.update(args)
 
 
@@ -138,8 +138,15 @@ def get_env_state(image, game, state_scale):
     return image, image_tensor
 
 
-def get_state_from_env(game):
-    state = game.get_state()
+def get_state_cnn_from_env(game):
+    state = game.get_state_cnn()
+    # test_im = state.copy()
+    # test_im[test_im==1] = 0.465
+    # test_im[test_im==2] = 0.50
+    # test_im[test_im ==3] = 0.80
+    # test_im[test_im ==4] = 0.30
+    # cv2.imshow("t",test_im)
+    # cv2.waitKey(1)
     state_tensor = torch.tensor(state, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device)
     return state, state_tensor
 
@@ -182,11 +189,11 @@ def main(args):
     os.makedirs(output_dir, exist_ok=True)
     pygame.font.init()
     pygame.init()
-    policy_net = DQN(args.screen_size * args.state_scale // args.block_size, __num_actions__, in_channels=1,
-                     features=args.conv_features).to(
+    policy_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, __num_actions__, in_channels=1,
+                        features=args.conv_features).to(
         device)
-    target_net = DQN(args.screen_size * args.state_scale // args.block_size, __num_actions__, in_channels=1,
-                     features=args.conv_features).to(
+    target_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, __num_actions__, in_channels=1,
+                        features=args.conv_features).to(
         device)
     wandb.watch(policy_net)
 
@@ -208,7 +215,7 @@ def main(args):
         if epi > int(args.episodes * 0.8):
             args.show_game = True
         game.reset()
-        state_image, state = get_state_from_env(game)
+        state_image, state = get_state_cnn_from_env(game)
         # get_env_state(display(player, food, game, record), game, args.state_scale)
         if args.show_game:
             display(player, food, game, record)
@@ -217,6 +224,16 @@ def main(args):
         episode_loss = 0
 
         total_reward = 0
+
+        vid_writer = None
+        if epi % args.save_interval:
+            fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+            output_file = os.path.join(output_dir, "episode_{}_gamplay.mp4".format(epi))
+            screen_x, screen_y = game.game_display.get_size()
+            vid_writer = cv2.VideoWriter(output_file, fourcc, 30,
+                                         screen_x,
+                                         screen_y)
+
         for t in count():
             # select action based on state
             action = select_action(state, policy_net, __num_actions__, *args.eps)
@@ -227,10 +244,14 @@ def main(args):
 
             score = game.score
             # observer our new state
-            next_image, next_state = get_state_from_env(game)
+            next_image, next_state = get_state_cnn_from_env(game)
 
             if args.show_game:
-                display(player, food, game, record)
+                image = display(player, food, game, record)
+            
+            if vid_writer is not None:
+                image = display(player, food, game, record)
+                vid_writer.write(image)
 
             if game.crash:
                 next_state = None
@@ -262,12 +283,15 @@ def main(args):
             record = new_record
             save_ckpt(output_dir, "policy_net", policy_net)
         # Update the target network, copying all weights and biases in DQN
-        if epi % args.target_update == 0:
+        if global_steps % args.target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
         if epi % args.save_interval == 0:
+            assert vid_writer is not None
+            vid_writer.release()
+            wandb.log({"video": wandb.Video(output_file)})
             image = display(player, food, game, record)
-            cv2.imwrite(os.path.join(output_dir, "episode_{}_end_img.jpg"), image)
-            logger.add_image("episode_end_img",torch.from_numpy(image).permute(2, 0, 1), global_step=epi)
+            cv2.imwrite(os.path.join(output_dir, "episode_{}_end_img.jpg"), image[:, :, ::-1])
+            logger.add_image("episode_end_img", torch.from_numpy(image).permute(2, 0, 1), global_step=epi)
             save_ckpt(output_dir, "episode_{}_ckpt".format(epi), policy_net)
 
     print("Complete")
