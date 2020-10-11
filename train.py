@@ -203,7 +203,7 @@ def main(args):
     target_net.eval()
 
     # use RMSprop here because there is uncertainty what momentum does in RL environment.
-    optimizer = optim.RMSprop(policy_net.parameters())
+    optimizer = optim.RMSprop(policy_net.parameters(), lr=args.lr)
     memory = ReplayMemory(args.memory_size)
     record = 0
     game = Snake(args.screen_size, args.screen_size, block_size=args.block_size, state_scale=args.state_scale)
@@ -230,7 +230,7 @@ def main(args):
             fourcc = cv2.VideoWriter_fourcc(*'MP4V')
             output_file = os.path.join(output_dir, "episode_{}_gamplay.mp4".format(epi))
             screen_x, screen_y = game.game_display.get_size()
-            vid_writer = cv2.VideoWriter(output_file, fourcc, 30,(screen_x,screen_y))
+            vid_writer = cv2.VideoWriter(output_file, fourcc, 30, (screen_x, screen_y))
 
         for t in count():
             # select action based on state
@@ -246,9 +246,9 @@ def main(args):
 
             if args.show_game:
                 image = display(player, food, game, record)
-            
+
             if vid_writer is not None:
-                image = display(player, food, game, record)[:,:,::-1]
+                image = display(player, food, game, record)[:, :, ::-1]
                 vid_writer.write(image)
 
             if game.crash:
@@ -302,6 +302,7 @@ if __name__ == "__main__":
     parser.add_argument("--speed", help="game_speed", type=int, default=10)
     parser.add_argument("--show_game", help="show game visuals?", action="store_true")
     parser.add_argument("--batch_size", help="batch_size", type=int, default=128)
+    parser.add_argument("--lr", help="learning rate", type=float, default=0.0003)
     parser.add_argument("--gamma", help="gamma, for balancing near/long term reward", type=float, default=0.999)
     parser.add_argument("--memory_size", help="size of memory", type=int, default=10000)
     parser.add_argument("--eps", help="epsilon, in 'start, end, decay' format", default="0.9,0.05,200")
