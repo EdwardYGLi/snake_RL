@@ -248,7 +248,7 @@ def main(args):
                 image = display(player, food, game, record)
             
             if vid_writer is not None:
-                image = display(player, food, game, record)
+                image = display(player, food, game, record)[:,:,::-1]
                 vid_writer.write(image)
 
             if game.crash:
