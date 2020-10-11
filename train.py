@@ -226,13 +226,11 @@ def main(args):
         total_reward = 0
 
         vid_writer = None
-        if epi % args.save_interval:
+        if epi % args.save_interval == 0:
             fourcc = cv2.VideoWriter_fourcc(*'MP4V')
             output_file = os.path.join(output_dir, "episode_{}_gamplay.mp4".format(epi))
             screen_x, screen_y = game.game_display.get_size()
-            vid_writer = cv2.VideoWriter(output_file, fourcc, 30,
-                                         screen_x,
-                                         screen_y)
+            vid_writer = cv2.VideoWriter(output_file, fourcc, 30,(screen_x,screen_y))
 
         for t in count():
             # select action based on state
