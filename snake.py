@@ -81,12 +81,12 @@ class Snake:
         }
 
     def get_state_cnn(self):
-        state = np.zeros((self.state_h, self.state_w, 1), dtype=np.float)
+        state = np.ones((self.state_h, self.state_w, 3), dtype=np.float)
         # draw borders
-        state[:self.state_scale, :, :] = 4
-        state[:, :self.state_scale, :] = 4
-        state[-self.state_scale:, :, :] = 4
-        state[:, -self.state_scale:, :] = 4
+        state[:self.state_scale, :, :] = 0
+        state[:, :self.state_scale, :] = 0
+        state[-self.state_scale:, :, :] = 0
+        state[:, -self.state_scale:, :] = 0
 
         state = self.player.update_state_cnn(state, self)
         state = self.food.update_state_cnn(state, self)
@@ -94,22 +94,17 @@ class Snake:
 
     def get_state_fcn(self):
         # this state model is from https://github.com/henniedeharder/snake
-        # snake coordinates 0-1
-        snake_x, snake_y = self.player.x / self.width, self.player.y / self.height
-
-        # apple coordintes scaled 0-1
-        apple_x, apple_y = self.food.x_food / self.width, self.food.y_food / self.height
 
         # wall check
-        if snake_y >= self.height*0.75:
+        if self.player.y >= self.height*0.75:
             wall_up, wall_down = 1, 0
-        elif snake_y <= self.height*0.25:
+        elif self.player.y <= self.height*0.25:
             wall_up, wall_down = 0, 1
         else:
             wall_up, wall_down = 0, 0
-        if snake_x >= self.width*0.75:
+        if self.player.x>= self.width*0.75:
             wall_right, wall_left = 1, 0
-        elif snake_x <= self.width*0.25:
+        elif self.player.x <= self.width*0.25:
             wall_right, wall_left = 0, 1
         else:
             wall_right, wall_left = 0, 0
@@ -274,9 +269,9 @@ class Player:
                 x_temp = x_temp // game.block_size * game.state_scale
                 y_temp = y_temp // game.block_size * game.state_scale
                 if i == 0:
-                    state[y_temp, x_temp] = 1
+                    state[y_temp, x_temp,:] = [0,128,0]
                 else:
-                    state[y_temp, x_temp] = 2
+                    state[y_temp, x_temp,:] = [0,255,0]
         return state
 
     def display_player(self, game):
@@ -328,7 +323,7 @@ class Food:
     def update_state_cnn(self, state, game):
         x = self.x_food // game.block_size * game.state_scale
         y = self.y_food // game.block_size * game.state_scale
-        state[y, x, :] = 3
+        state[y, x, :] = [0,0,255]
         return state
 
 

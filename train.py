@@ -140,13 +140,8 @@ def get_env_state(image, game, state_scale):
 
 def get_state_cnn_from_env(game):
     state = game.get_state_cnn()
-    # test_im = state.copy()
-    # test_im[test_im==1] = 0.465
-    # test_im[test_im==2] = 0.50
-    # test_im[test_im ==3] = 0.80
-    # test_im[test_im ==4] = 0.30
-    # cv2.imshow("t",test_im)
-    # cv2.waitKey(1)
+    cv2.imshow("state",state)
+    cv2.waitKey(1)
     state_tensor = torch.tensor(state, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device)
     return state, state_tensor
 
@@ -198,10 +193,10 @@ def main(args):
     pygame.font.init()
     pygame.init()
     if args.training_type.lower() == "cnn":
-        policy_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=1,
+        policy_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=3,
                             features=args.features).to(
             device)
-        target_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=1,
+        target_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=3,
                             features=args.features).to(
             device)
         get_state = get_state_cnn_from_env
