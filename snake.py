@@ -276,12 +276,10 @@ class Player:
 
     def display_player(self, game):
         # if not game.crash:
-        for i in range(self.food):
-            x_temp, y_temp = self.position[len(self.position) - 1 - i]
-            if i == 0:
-                game.game_display.blit(self.head_image, (x_temp, y_temp))
-            else:
-                game.game_display.blit(self.image, (x_temp, y_temp))
+        for i in range(1,self.food):
+            game.game_display.blit(self.image, self.position[len(self.position) - 1 - i])
+
+        game.game_display.blit(self.head_image,self.position[-1])
         update_screen()
         # else:
         #     pygame.time.wait(300)
@@ -306,12 +304,14 @@ class Food:
         self.y_food = self.y_food - self.y_food % self.game.block_size
 
     def next_food(self, game, player):
-        self.x_food = random.randint(game.block_size, game.width - 2 * game.block_size)
-        self.x_food = self.x_food - self.x_food % game.block_size
+        x_food= random.randint(game.block_size, game.width - 2 * game.block_size)
+        x_food = x_food - x_food % game.block_size
 
-        self.y_food = random.randint(game.block_size, game.height - 2 * game.block_size)
-        self.y_food = self.y_food - self.y_food % game.block_size
-        if [self.x_food, self.y_food] not in player.position:
+        y_food = random.randint(game.block_size, game.height - 2 * game.block_size)
+        y_food = y_food - y_food % game.block_size
+        if [x_food, y_food] not in player.position and x_food != self.x_food and y_food != self.y_food:
+            self.x_food = x_food
+            self.y_food = y_food
             return self.x_food, self.y_food
         else:
             self.next_food(game, player)
@@ -363,7 +363,8 @@ def run_game(speed):
 
         record = get_record(game.score, record)
         player.move(move, player.x, player.y, game, food)
-        img = display(player, food, game, record)
+        if not game.crash:
+            img = display(player, food, game, record)
         pygame.time.wait(speed)
 
 
