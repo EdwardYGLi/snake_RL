@@ -316,7 +316,7 @@ class Food:
 
         self.y_food = random.randint(game.block_size, game.height - 2 * game.block_size)
         self.y_food = self.y_food - self.y_food % game.block_size
-        if (self.x_food, self.y_food) not in player.position:
+        if [self.x_food, self.y_food] not in player.position:
             return self.x_food, self.y_food
         else:
             self.next_food(game, player)

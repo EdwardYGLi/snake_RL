@@ -162,7 +162,8 @@ def get_reward(player, food, game, rewards):
         return rewards[1]
     if player.eaten:
         return rewards[0]
-    # # the diagonal length is the longest in the grid
+
+    # add a distance reward if needed.
     # dist_reward_scale = 10 if len(rewards) < 3 else rewards[2]
     # dist = np.sqrt((food.x_food - player.x) ** 2 + (food.y_food - player.y) ** 2) / game.block_size
     # # velocity = np.sqrt((player.x - player.prev_x) ** 2 + (player.y - player.prev_y) ** 2) / game.block_size
@@ -246,7 +247,7 @@ def main(args):
 
         vid_writer = None
         if epi % args.save_interval == 0:
-            fourcc = cv2.VideoWriter_fourcc(*'MP4V')
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             output_file = os.path.join(output_dir, "episode_{}_gamplay.mp4".format(epi))
             screen_x, screen_y = game.game_display.get_size()
             vid_writer = cv2.VideoWriter(output_file, fourcc, 30, (screen_x, screen_y))
