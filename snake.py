@@ -119,7 +119,7 @@ class Snake:
         body_left = []
         if len(self.player.position) > 3:
             for body in itertools.islice(self.player.position,3,None):
-                if distance(body,[self.player.x,self.player.y]) == self.block_size:
+                if distance(body,[self.player.x,self.player.y]) < 2 * self.block_size:
                     if body[1] < self.player.y:
                         body_down.append(1)
                     elif body[1] > self.player.y:

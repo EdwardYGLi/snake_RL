@@ -166,7 +166,8 @@ def get_reward(player, food, game, rewards):
     # dist_reward = 1 - np.power(dist, 0.4)
     #
     # reward = dist_reward * dist_reward_scale
-    reward = 0
+    # very small reward to staying alive.
+    reward = 0.1
     return reward
 
 
