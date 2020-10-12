@@ -10,10 +10,10 @@ import torch.nn as nn
 class DQNCNN(nn.Module):
     def __init__(self, side_length, outputs, in_channels = 1, features=[32, 64, 128]):
         super(DQNCNN, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=features[0], kernel_size=5, stride=1, padding=2)
+        self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=features[0], kernel_size=9, stride=1, padding=4)
         self.bn1 = nn.BatchNorm2d(num_features=features[0])
         self.mp1 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.conv2 = nn.Conv2d(in_channels=features[0], out_channels=features[1], kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=features[0], out_channels=features[1], kernel_size=5, stride=1, padding=2)
         self.bn2 = nn.BatchNorm2d(num_features=features[1])
         self.mp2 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.conv3 = nn.Conv2d(in_channels=features[1], out_channels=features[2], kernel_size=3, stride=1, padding=1)
@@ -23,9 +23,9 @@ class DQNCNN(nn.Module):
             return (l - k + 2 * p) // s + 1
 
         # calculate shape
-        side_length = calc_out_shape(side_length, 5, 1, 2)  # after first conv
+        side_length = calc_out_shape(side_length, 9, 1, 4)  # after first conv
         side_length = calc_out_shape(side_length, 2, 2, 0)  # after first maxpool
-        side_length = calc_out_shape(side_length, 3, 1, 1)  # after second conv
+        side_length = calc_out_shape(side_length, 5, 1, 2)  # after second conv
         side_length = calc_out_shape(side_length, 2, 2, 0)  # after second maxpool
         side_length = calc_out_shape(side_length, 3, 1, 1)  # after third conv
 
