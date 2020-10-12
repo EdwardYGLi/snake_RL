@@ -66,7 +66,7 @@ def select_action(state, policy_net, n_actions, eps_start, eps_end, eps_decay):
     # eps_threshold = eps_end + (eps_start - eps_end) * \
     #                 math.exp(-1. * global_steps / eps_decay)
     # linear epsilon decay
-    eps_threshold = max((eps_start - global_steps * eps_decay), eps_end)
+    eps_threshold = max((eps_start - global_steps / eps_decay), eps_end)
 
     global_steps += 1
     if sample > eps_threshold:
@@ -84,7 +84,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def optimize_model(args, memory, policy_net, target_net, optimizer):
-    if len(memory) < args.batch_size:
+    if len(memory) < args.batch_size or len(memory) < args.learning_start:
         return None
     transitions = memory.sample(args.batch_size)
     # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
@@ -162,14 +162,15 @@ def get_reward(player, food, game, rewards):
         return rewards[1]
     if player.eaten:
         return rewards[0]
-    # the diagonal length is the longest in the grid
-    dist_reward_scale = 10 if len(rewards) < 3 else rewards[2]
-    dist = np.sqrt((food.x_food - player.x) ** 2 + (food.y_food - player.y) ** 2) / game.block_size
-    # velocity = np.sqrt((player.x - player.prev_x) ** 2 + (player.y - player.prev_y) ** 2) / game.block_size
-    # based on distance to food, reward the agent
-    dist_reward = 1 - np.power(dist, 0.4)
-
-    reward = dist_reward * dist_reward_scale
+    # # the diagonal length is the longest in the grid
+    # dist_reward_scale = 10 if len(rewards) < 3 else rewards[2]
+    # dist = np.sqrt((food.x_food - player.x) ** 2 + (food.y_food - player.y) ** 2) / game.block_size
+    # # velocity = np.sqrt((player.x - player.prev_x) ** 2 + (player.y - player.prev_y) ** 2) / game.block_size
+    # # based on distance to food, reward the agent
+    # dist_reward = 1 - np.power(dist, 0.4)
+    #
+    # reward = dist_reward * dist_reward_scale
+    reward = 0
     return reward
 
 
@@ -241,7 +242,6 @@ def main(args):
 
         score = 0
         episode_loss = 0
-
         total_reward = 0
 
         vid_writer = None
@@ -299,13 +299,14 @@ def main(args):
         if new_record > record:
             record = new_record
             save_ckpt(output_dir, "policy_net", policy_net)
+
         # Update the target network, copying all weights and biases in DQN
         if global_steps % args.target_update == 0:
             target_net.load_state_dict(policy_net.state_dict())
         if epi % args.save_interval == 0:
             assert vid_writer is not None
             vid_writer.release()
-            wandb.log({"video": wandb.Video(output_file,format="mp4",fps=30)})
+            wandb.log({"video": wandb.Video(output_file, format="mp4", fps=30)})
             image = display(player, food, game, record)
             cv2.imwrite(os.path.join(output_dir, "episode_{}_end_img.jpg").format(epi), image[:, :, ::-1])
             logger.add_image("episode_end_img", torch.from_numpy(image).permute(2, 0, 1), global_step=epi)
@@ -320,8 +321,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("snake-rl training parser")
     parser.add_argument("--speed", help="game_speed", type=int, default=10)
     parser.add_argument("--show_game", help="show game visuals?", action="store_true")
+    parser.add_argument("--learning_start", help="memory elements before learning starts", type=int, default=5000)
     parser.add_argument("--batch_size", help="batch_size", type=int, default=128)
-    parser.add_argument("--training_type", help="type of training,(fcn, cnn)",default="cnn")
+    parser.add_argument("--training_type", help="type of training,(fcn, cnn)", default="cnn")
     parser.add_argument("--lr", help="learning rate", type=float, default=0.0003)
     parser.add_argument("--gamma", help="gamma, for balancing near/long term reward", type=float, default=0.999)
     parser.add_argument("--memory_size", help="size of memory", type=int, default=10000)
@@ -337,7 +339,9 @@ if __name__ == "__main__":
     parser.add_argument("--reward", help="reward for eating,dying", default="100,-10")
     parser.add_argument("--output_dir", help="output directory", default="./output")
     args = parser.parse_args()
+    assert args.learning_start < args.memory_size
     args.eps = [float(x) for x in args.eps.split(",")]
     args.features = [int(x) for x in args.features.split(",")]
     args.reward = [float(x) for x in args.reward.split(",")]
+    print(args.reward)
     main(args)
