@@ -316,7 +316,6 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("snake-rl training parser")
-    parser.add_argument("--speed", help="game_speed", type=int, default=10)
     parser.add_argument("--show_game", help="show game visuals?", action="store_true")
     parser.add_argument("--learning_start", help="memory elements before learning starts", type=int, default=5000)
     parser.add_argument("--batch_size", help="batch_size", type=int, default=128)
