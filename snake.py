@@ -81,7 +81,7 @@ class Snake:
         }
 
     def get_state_cnn(self):
-        state = np.ones((self.state_h, self.state_w, 3), dtype=np.float)
+        state = np.ones((self.state_h, self.state_w, 3), dtype=np.uint8)*255
         # draw borders
         state[:self.state_scale, :, :] = 0
         state[:, :self.state_scale, :] = 0

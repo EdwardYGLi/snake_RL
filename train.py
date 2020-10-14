@@ -140,9 +140,12 @@ def get_env_state(image, game, state_scale):
 
 def get_state_cnn_from_env(game):
     state = game.get_state_cnn()
-    # cv2.imshow("state",state)
-    # cv2.waitKey(1)
-    state_tensor = torch.tensor(state, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device)
+    # state = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
+    state_tensor = torch.tensor(state)
+    state_tensor = (state_tensor-128)/128
+    if not isinstance(state_tensor, torch.FloatTensor):
+        raise AssertionError("Tensor should be a FloatTensor")
+    state_tensor = state_tensor.permute(2, 0, 1).unsqueeze(0).to(device)
     return state, state_tensor
 
 
@@ -194,10 +197,10 @@ def main(args):
     pygame.font.init()
     pygame.init()
     if args.training_type.lower() == "cnn":
-        policy_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=3,
+        policy_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=3*args.cnn_buffer_size,
                             features=args.features).to(
             device)
-        target_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=3,
+        target_net = DQNCNN(args.screen_size * args.state_scale // args.block_size, Snake.num_actions, in_channels=3*args.cnn_buffer_size,
                             features=args.features).to(
             device)
         get_state = get_state_cnn_from_env
@@ -232,11 +235,19 @@ def main(args):
         if epi > int(args.episodes * 0.8):
             args.show_game = True
         game.reset()
+        frame_buffer = None
+        if args.training_type.lower() == "cnn":
+            frame_buffer = []
         state_image, state = get_state(game)
+
+        if frame_buffer is not None:
+            frame_buffer.append(state)
         # get_env_state(display(player, food, game, record), game, args.state_scale)
         if args.show_game:
             display(player, food, game, record)
 
+        if args.training_type == "cnn":
+            frame_buffer = []
         score = 0
         episode_loss = 0
         total_reward = 0
@@ -260,6 +271,9 @@ def main(args):
             # observer our new state
             next_image, next_state = get_state(game)
 
+            if frame_buffer is not None:
+                frame_buffer.append(state)
+
             if args.show_game:
                 display(player, food, game, record)
 
@@ -269,6 +283,7 @@ def main(args):
 
             if game.crash:
                 next_state = None
+
 
             # store the transition in memory
             memory.push(state, action, next_state, reward_tensor)
@@ -320,6 +335,7 @@ if __name__ == "__main__":
     parser.add_argument("--learning_start", help="memory elements before learning starts", type=int, default=5000)
     parser.add_argument("--batch_size", help="batch_size", type=int, default=128)
     parser.add_argument("--training_type", help="type of training,(fcn, cnn)", default="cnn")
+    parser.add_argument("--cnn_frame_buffer",help="frame buffer before adding to state",type = int, default=4)
     parser.add_argument("--lr", help="learning rate", type=float, default=0.0003)
     parser.add_argument("--gamma", help="gamma, for balancing near/long term reward", type=float, default=0.999)
     parser.add_argument("--memory_size", help="size of memory", type=int, default=10000)
