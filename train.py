@@ -140,8 +140,6 @@ def get_env_state(image, game, state_scale):
 
 def get_state_cnn_from_env(game):
     state = game.get_state_cnn()
-    cv2.imshow("test",state)
-    cv2.waitKey(0)
     # state = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
     state_tensor = torch.tensor(state)
     state_tensor = (state_tensor-128)/128
